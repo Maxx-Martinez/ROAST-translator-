@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+<rect width="900" height="900" fill="white"/>
+<circle cx="450" cy="450" r="380" fill="none" stroke="#777" stroke-width="2"/>
+<text x="450" y="35" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">Draft EasyCap CAC-64 / Soterix Coordinate Preview</text>
+<text x="450" y="62" text-anchor="middle" font-family="Arial" font-size="14" fill="#555">Blocked EEG holders are filled; open Soterix holes are dashed.</text>
+<path d="M 338.8 90.0 L 338.8 63.0 Q 338.8 48.0 358.8 48.0 Q 378.8 48.0 378.8 63.0 L 378.8 90.0 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="358.8" y="74.0" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">Fp1</text>
+<path d="M 521.2 90.0 L 521.2 63.0 Q 521.2 48.0 541.2 48.0 Q 561.2 48.0 561.2 63.0 L 561.2 90.0 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="541.2" y="74.0" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">Fp2</text>
+<path d="M 232.4 157.6 L 232.4 130.6 Q 232.4 115.6 252.4 115.6 Q 272.4 115.6 272.4 130.6 L 272.4 157.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="252.4" y="141.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">AF7</text>
+<path d="M 338.8 191.3 L 338.8 164.3 Q 338.8 149.3 358.8 149.3 Q 378.8 149.3 378.8 164.3 L 378.8 191.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="358.8" y="175.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">AF3</text>
+<path d="M 430.0 208.2 L 430.0 181.2 Q 430.0 166.2 450.0 166.2 Q 470.0 166.2 470.0 181.2 L 470.0 208.2 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="192.2" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">AFz</text>
+<path d="M 521.2 191.3 L 521.2 164.3 Q 521.2 149.3 541.2 149.3 Q 561.2 149.3 561.2 164.3 L 561.2 191.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="541.2" y="175.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">AF4</text>
+<path d="M 627.6 157.6 L 627.6 130.6 Q 627.6 115.6 647.6 115.6 Q 667.6 115.6 667.6 130.6 L 667.6 157.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="647.6" y="141.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">AF8</text>
+<path d="M 156.4 242.0 L 156.4 215.0 Q 156.4 200.0 176.4 200.0 Q 196.4 200.0 196.4 215.0 L 196.4 242.0 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="176.4" y="226.0" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F7</text>
+<path d="M 240.0 267.3 L 240.0 240.3 Q 240.0 225.3 260.0 225.3 Q 280.0 225.3 280.0 240.3 L 280.0 267.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="260.0" y="251.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F5</text>
+<path d="M 308.4 275.8 L 308.4 248.8 Q 308.4 233.8 328.4 233.8 Q 348.4 233.8 348.4 248.8 L 348.4 275.8 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="328.4" y="259.8" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F3</text>
+<path d="M 376.8 292.7 L 376.8 265.7 Q 376.8 250.7 396.8 250.7 Q 416.8 250.7 416.8 265.7 L 416.8 292.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="396.8" y="276.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F1</text>
+<path d="M 430.0 284.2 L 430.0 257.2 Q 430.0 242.2 450.0 242.2 Q 470.0 242.2 470.0 257.2 L 470.0 284.2 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="268.2" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">Fz</text>
+<path d="M 483.2 292.7 L 483.2 265.7 Q 483.2 250.7 503.2 250.7 Q 523.2 250.7 523.2 265.7 L 523.2 292.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="503.2" y="276.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F2</text>
+<path d="M 551.6 275.8 L 551.6 248.8 Q 551.6 233.8 571.6 233.8 Q 591.6 233.8 591.6 248.8 L 591.6 275.8 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="571.6" y="259.8" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F4</text>
+<path d="M 620.0 267.3 L 620.0 240.3 Q 620.0 225.3 640.0 225.3 Q 660.0 225.3 660.0 240.3 L 660.0 267.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="640.0" y="251.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F6</text>
+<path d="M 703.6 242.0 L 703.6 215.0 Q 703.6 200.0 723.6 200.0 Q 743.6 200.0 743.6 215.0 L 743.6 242.0 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="723.6" y="226.0" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">F8</text>
+<path d="M 50.0 326.4 L 50.0 299.4 Q 50.0 284.4 70.0 284.4 Q 90.0 284.4 90.0 299.4 L 90.0 326.4 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="70.0" y="310.4" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FT9</text>
+<path d="M 126.0 343.3 L 126.0 316.3 Q 126.0 301.3 146.0 301.3 Q 166.0 301.3 166.0 316.3 L 166.0 343.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="146.0" y="327.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FT7</text>
+<path d="M 194.4 377.1 L 194.4 350.1 Q 194.4 335.1 214.4 335.1 Q 234.4 335.1 234.4 350.1 L 234.4 377.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="214.4" y="361.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FC5</text>
+<path d="M 293.2 385.6 L 293.2 358.6 Q 293.2 343.6 313.2 343.6 Q 333.2 343.6 333.2 358.6 L 333.2 385.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="313.2" y="369.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FC3</text>
+<path d="M 376.8 385.6 L 376.8 358.6 Q 376.8 343.6 396.8 343.6 Q 416.8 343.6 416.8 358.6 L 416.8 385.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="396.8" y="369.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FC1</text>
+<path d="M 430.0 385.6 L 430.0 358.6 Q 430.0 343.6 450.0 343.6 Q 470.0 343.6 470.0 358.6 L 470.0 385.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="369.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FCz</text>
+<path d="M 483.2 385.6 L 483.2 358.6 Q 483.2 343.6 503.2 343.6 Q 523.2 343.6 523.2 358.6 L 523.2 385.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="503.2" y="369.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FC2</text>
+<path d="M 566.8 385.6 L 566.8 358.6 Q 566.8 343.6 586.8 343.6 Q 606.8 343.6 606.8 358.6 L 606.8 385.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="586.8" y="369.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FC4</text>
+<path d="M 665.6 377.1 L 665.6 350.1 Q 665.6 335.1 685.6 335.1 Q 705.6 335.1 705.6 350.1 L 705.6 377.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="685.6" y="361.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FC6</text>
+<path d="M 734.0 343.3 L 734.0 316.3 Q 734.0 301.3 754.0 301.3 Q 774.0 301.3 774.0 316.3 L 774.0 343.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="754.0" y="327.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FT8</text>
+<path d="M 810.0 326.4 L 810.0 299.4 Q 810.0 284.4 830.0 284.4 Q 850.0 284.4 850.0 299.4 L 850.0 326.4 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="830.0" y="310.4" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">FT10</text>
+<path d="M 103.2 486.9 L 103.2 459.9 Q 103.2 444.9 123.2 444.9 Q 143.2 444.9 143.2 459.9 L 143.2 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="123.2" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">T7</text>
+<path d="M 194.4 486.9 L 194.4 459.9 Q 194.4 444.9 214.4 444.9 Q 234.4 444.9 234.4 459.9 L 234.4 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="214.4" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">C5</text>
+<path d="M 285.6 486.9 L 285.6 459.9 Q 285.6 444.9 305.6 444.9 Q 325.6 444.9 325.6 459.9 L 325.6 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="305.6" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">C3</text>
+<path d="M 369.2 486.9 L 369.2 459.9 Q 369.2 444.9 389.2 444.9 Q 409.2 444.9 409.2 459.9 L 409.2 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="389.2" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">C1</text>
+<path d="M 430.0 486.9 L 430.0 459.9 Q 430.0 444.9 450.0 444.9 Q 470.0 444.9 470.0 459.9 L 470.0 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">Cz</text>
+<path d="M 490.8 486.9 L 490.8 459.9 Q 490.8 444.9 510.8 444.9 Q 530.8 444.9 530.8 459.9 L 530.8 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="510.8" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">C2</text>
+<path d="M 574.4 486.9 L 574.4 459.9 Q 574.4 444.9 594.4 444.9 Q 614.4 444.9 614.4 459.9 L 614.4 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="594.4" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">C4</text>
+<path d="M 665.6 486.9 L 665.6 459.9 Q 665.6 444.9 685.6 444.9 Q 705.6 444.9 705.6 459.9 L 705.6 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="685.6" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">C6</text>
+<path d="M 756.8 486.9 L 756.8 459.9 Q 756.8 444.9 776.8 444.9 Q 796.8 444.9 796.8 459.9 L 796.8 486.9 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="776.8" y="470.9" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">T8</text>
+<path d="M 50.0 605.1 L 50.0 578.1 Q 50.0 563.1 70.0 563.1 Q 90.0 563.1 90.0 578.1 L 90.0 605.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="70.0" y="589.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">TP9</text>
+<path d="M 133.6 596.7 L 133.6 569.7 Q 133.6 554.7 153.6 554.7 Q 173.6 554.7 173.6 569.7 L 173.6 596.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="153.6" y="580.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">TP7</text>
+<path d="M 217.2 579.8 L 217.2 552.8 Q 217.2 537.8 237.2 537.8 Q 257.2 537.8 257.2 552.8 L 257.2 579.8 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="237.2" y="563.8" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">CP5</text>
+<path d="M 308.4 571.3 L 308.4 544.3 Q 308.4 529.3 328.4 529.3 Q 348.4 529.3 348.4 544.3 L 348.4 571.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="328.4" y="555.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">CP3</text>
+<path d="M 376.8 571.3 L 376.8 544.3 Q 376.8 529.3 396.8 529.3 Q 416.8 529.3 416.8 544.3 L 416.8 571.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="396.8" y="555.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">CP1</text>
+<path d="M 430.0 571.3 L 430.0 544.3 Q 430.0 529.3 450.0 529.3 Q 470.0 529.3 470.0 544.3 L 470.0 571.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="555.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">CPz</text>
+<path d="M 483.2 571.3 L 483.2 544.3 Q 483.2 529.3 503.2 529.3 Q 523.2 529.3 523.2 544.3 L 523.2 571.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="503.2" y="555.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">CP2</text>
+<path d="M 551.6 571.3 L 551.6 544.3 Q 551.6 529.3 571.6 529.3 Q 591.6 529.3 591.6 544.3 L 591.6 571.3 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="571.6" y="555.3" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">CP4</text>
+<path d="M 642.8 579.8 L 642.8 552.8 Q 642.8 537.8 662.8 537.8 Q 682.8 537.8 682.8 552.8 L 682.8 579.8 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="662.8" y="563.8" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">CP6</text>
+<path d="M 726.4 596.7 L 726.4 569.7 Q 726.4 554.7 746.4 554.7 Q 766.4 554.7 766.4 569.7 L 766.4 596.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="746.4" y="580.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">TP8</text>
+<path d="M 810.0 605.1 L 810.0 578.1 Q 810.0 563.1 830.0 563.1 Q 850.0 563.1 850.0 578.1 L 850.0 605.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="830.0" y="589.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">TP10</text>
+<path d="M 164.0 681.1 L 164.0 654.1 Q 164.0 639.1 184.0 639.1 Q 204.0 639.1 204.0 654.1 L 204.0 681.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="184.0" y="665.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P7</text>
+<path d="M 247.6 672.7 L 247.6 645.7 Q 247.6 630.7 267.6 630.7 Q 287.6 630.7 287.6 645.7 L 287.6 672.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="267.6" y="656.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P5</text>
+<path d="M 316.0 664.2 L 316.0 637.2 Q 316.0 622.2 336.0 622.2 Q 356.0 622.2 356.0 637.2 L 356.0 664.2 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="336.0" y="648.2" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P3</text>
+<path d="M 376.8 664.2 L 376.8 637.2 Q 376.8 622.2 396.8 622.2 Q 416.8 622.2 416.8 637.2 L 416.8 664.2 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="396.8" y="648.2" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P1</text>
+<path d="M 430.0 655.8 L 430.0 628.8 Q 430.0 613.8 450.0 613.8 Q 470.0 613.8 470.0 628.8 L 470.0 655.8 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="639.8" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">Pz</text>
+<path d="M 483.2 664.2 L 483.2 637.2 Q 483.2 622.2 503.2 622.2 Q 523.2 622.2 523.2 637.2 L 523.2 664.2 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="503.2" y="648.2" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P2</text>
+<path d="M 544.0 664.2 L 544.0 637.2 Q 544.0 622.2 564.0 622.2 Q 584.0 622.2 584.0 637.2 L 584.0 664.2 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="564.0" y="648.2" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P4</text>
+<path d="M 612.4 672.7 L 612.4 645.7 Q 612.4 630.7 632.4 630.7 Q 652.4 630.7 652.4 645.7 L 652.4 672.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="632.4" y="656.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P6</text>
+<path d="M 696.0 681.1 L 696.0 654.1 Q 696.0 639.1 716.0 639.1 Q 736.0 639.1 736.0 654.1 L 736.0 681.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="716.0" y="665.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">P8</text>
+<path d="M 247.6 765.6 L 247.6 738.6 Q 247.6 723.6 267.6 723.6 Q 287.6 723.6 287.6 738.6 L 287.6 765.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="267.6" y="749.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">PO7</text>
+<path d="M 346.4 748.7 L 346.4 721.7 Q 346.4 706.7 366.4 706.7 Q 386.4 706.7 386.4 721.7 L 386.4 748.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="366.4" y="732.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">PO3</text>
+<path d="M 430.0 748.7 L 430.0 721.7 Q 430.0 706.7 450.0 706.7 Q 470.0 706.7 470.0 721.7 L 470.0 748.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="732.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">POz</text>
+<path d="M 513.6 748.7 L 513.6 721.7 Q 513.6 706.7 533.6 706.7 Q 553.6 706.7 553.6 721.7 L 553.6 748.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="533.6" y="732.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">PO4</text>
+<path d="M 612.4 765.6 L 612.4 738.6 Q 612.4 723.6 632.4 723.6 Q 652.4 723.6 652.4 738.6 L 652.4 765.6 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="632.4" y="749.6" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">PO8</text>
+<path d="M 186.8 824.7 L 186.8 797.7 Q 186.8 782.7 206.8 782.7 Q 226.8 782.7 226.8 797.7 L 226.8 824.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="206.8" y="808.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">PO9</text>
+<path d="M 338.8 833.1 L 338.8 806.1 Q 338.8 791.1 358.8 791.1 Q 378.8 791.1 378.8 806.1 L 378.8 833.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="358.8" y="817.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">O1</text>
+<path d="M 430.0 850.0 L 430.0 823.0 Q 430.0 808.0 450.0 808.0 Q 470.0 808.0 470.0 823.0 L 470.0 850.0 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="450.0" y="834.0" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">Oz</text>
+<path d="M 521.2 833.1 L 521.2 806.1 Q 521.2 791.1 541.2 791.1 Q 561.2 791.1 561.2 806.1 L 561.2 833.1 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="541.2" y="817.1" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">O2</text>
+<path d="M 673.2 824.7 L 673.2 797.7 Q 673.2 782.7 693.2 782.7 Q 713.2 782.7 713.2 797.7 L 713.2 824.7 Z" fill="#92d29a" stroke="#3d7f49" stroke-width="2"/>
+<text x="693.2" y="808.7" text-anchor="middle" font-family="Arial" font-size="11" fill="#111827">PO10</text>
+<circle cx="290.4" cy="200.9" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="290.4" y="204.9" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">AFF5h</text>
+<circle cx="408.2" cy="209.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="408.2" y="213.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">AFF1h</text>
+<circle cx="491.8" cy="209.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="491.8" y="213.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">AFF2h</text>
+<circle cx="609.6" cy="200.9" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="609.6" y="204.9" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">AFF6h</text>
+<circle cx="263.8" cy="302.2" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="263.8" y="306.2" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FFC5h</text>
+<circle cx="355.0" cy="310.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="355.0" y="314.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FFC3h</text>
+<circle cx="423.4" cy="319.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="423.4" y="323.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FFC1h</text>
+<circle cx="476.6" cy="319.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="476.6" y="323.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FFC2h</text>
+<circle cx="545.0" cy="310.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="545.0" y="314.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FFC4h</text>
+<circle cx="636.2" cy="302.2" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="636.2" y="306.2" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FFC6h</text>
+<circle cx="256.2" cy="407.8" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="256.2" y="411.8" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FCC5h</text>
+<circle cx="351.2" cy="407.8" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="351.2" y="411.8" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FCC3h</text>
+<circle cx="423.4" cy="407.8" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="423.4" y="411.8" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FCC1h</text>
+<circle cx="476.6" cy="407.8" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="476.6" y="411.8" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FCC2h</text>
+<circle cx="548.8" cy="407.8" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="548.8" y="411.8" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FCC4h</text>
+<circle cx="643.8" cy="407.8" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="643.8" y="411.8" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">FCC6h</text>
+<circle cx="161.2" cy="513.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="161.2" y="517.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">TTP7h</text>
+<circle cx="267.6" cy="509.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="267.6" y="513.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CCP5h</text>
+<circle cx="355.0" cy="509.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="355.0" y="513.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CCP3h</text>
+<circle cx="415.8" cy="509.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="415.8" y="513.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CCP1h</text>
+<circle cx="484.2" cy="509.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="484.2" y="513.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CCP2h</text>
+<circle cx="545.0" cy="509.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="545.0" y="513.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CCP4h</text>
+<circle cx="632.4" cy="509.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="632.4" y="513.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CCP6h</text>
+<circle cx="738.8" cy="513.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="738.8" y="517.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">TTP8h</text>
+<circle cx="111.8" cy="640.0" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="111.8" y="644.0" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">TPP9h</text>
+<circle cx="206.8" cy="614.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="206.8" y="618.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">TPP7h</text>
+<circle cx="290.4" cy="593.6" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="290.4" y="597.6" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CPP5h</text>
+<circle cx="362.6" cy="589.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="362.6" y="593.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CPP3h</text>
+<circle cx="415.8" cy="589.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="415.8" y="593.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CPP1h</text>
+<circle cx="484.2" cy="589.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="484.2" y="593.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CPP2h</text>
+<circle cx="537.4" cy="589.3" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="537.4" y="593.3" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CPP4h</text>
+<circle cx="609.6" cy="593.6" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="609.6" y="597.6" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">CPP6h</text>
+<circle cx="693.2" cy="614.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="693.2" y="618.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">TPP8h</text>
+<circle cx="788.2" cy="640.0" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="788.2" y="644.0" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">TPP10h</text>
+<circle cx="142.2" cy="707.6" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="142.2" y="711.6" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">P9</text>
+<circle cx="210.6" cy="707.6" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="210.6" y="711.6" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">PPO9h</text>
+<circle cx="298.0" cy="690.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="298.0" y="694.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">PPO5h</text>
+<circle cx="408.2" cy="690.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="408.2" y="694.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">PPO1h</text>
+<circle cx="491.8" cy="690.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="491.8" y="694.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">PPO2h</text>
+<circle cx="602.0" cy="690.7" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="602.0" y="694.7" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">PPO6h</text>
+<circle cx="689.4" cy="707.6" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="689.4" y="711.6" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">PPO10h</text>
+<circle cx="757.8" cy="707.6" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="757.8" y="711.6" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">P10</text>
+<circle cx="290.4" cy="796.2" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="290.4" y="800.2" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">POO9h</text>
+<circle cx="408.2" cy="775.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="408.2" y="779.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">POO1</text>
+<circle cx="491.8" cy="775.1" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="491.8" y="779.1" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">POO2</text>
+<circle cx="609.6" cy="796.2" r="22" fill="white" stroke="#667085" stroke-width="2" stroke-dasharray="5 4"/>
+<text x="609.6" y="800.2" text-anchor="middle" font-family="Arial" font-size="10" fill="#344054">POO10h</text>
+</svg>

@@ -1,0 +1,16 @@
+label,x,y,status
+F3,-2.0,3.0,blocked
+F4,2.0,3.0,blocked
+Cz,0.0,0.0,blocked
+CP1,-0.8,-1.2,blocked
+P2,0.8,-2.5,blocked
+FCC3h,-2.5,2.1,open
+FCC1h,-0.8,2.1,open
+FCC2h,0.8,2.1,open
+FCC4h,2.5,2.1,open
+CCP1h,-0.8,-0.8,open
+CCP2h,0.8,-0.8,open
+CPP1h,-0.8,-2.0,open
+CPP2h,0.8,-2.0,open
+P1,-0.6,-2.8,open
+P2_open,0.6,-2.8,open

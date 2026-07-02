@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ROAST Translator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="toolbar">
+        <div>
+          <h1>ROAST Translator</h1>
+          <p>Geometry-based replacement suggestions for blocked EasyCap/Soterix montage sites.</p>
+        </div>
+        <button id="runButton" class="primary-button" type="button">Find replacements</button>
+      </section>
+
+      <section class="workspace">
+        <aside class="controls">
+          <section class="panel">
+            <h2>Original Montage</h2>
+            <div id="originalInputs" class="select-grid"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Settings</h2>
+            <label class="field">
+              <span>Nearby pool size</span>
+              <input id="poolSize" type="number" min="3" max="16" value="10" />
+            </label>
+            <label class="field">
+              <span>Results</span>
+              <input id="topN" type="number" min="1" max="50" value="10" />
+            </label>
+            <label class="field">
+              <span>Electrode radius</span>
+              <input id="electrodeRadius" type="number" min="0.1" max="2" step="0.05" value="0.45" />
+            </label>
+            <label class="field">
+              <span>Minimum region coverage</span>
+              <input id="minimumCoverage" type="number" min="0" max="100" value="85" />
+            </label>
+            <label class="check-field">
+              <input id="requireCoverage" type="checkbox" checked />
+              <span>Require minimum region coverage</span>
+            </label>
+          </section>
+
+          <section class="panel">
+            <h2>Importance</h2>
+            <div id="importanceControls" class="slider-list"></div>
+          </section>
+
+          <section class="panel">
+            <h2>Manual Montage</h2>
+            <div id="manualInputs" class="select-grid"></div>
+            <button id="scoreManualButton" class="secondary-button" type="button">Score manual montage</button>
+            <div id="manualScore" class="manual-score"></div>
+          </section>
+        </aside>
+
+        <section class="main-stage">
+          <section class="map-panel">
+            <div class="stage-heading">
+              <h2>Cap Map</h2>
+              <p id="selectedSummary">Run suggestions to view a candidate.</p>
+            </div>
+            <svg id="capMap" role="img" aria-label="Electrode cap map"></svg>
+          </section>
+
+          <section class="results-panel">
+            <div class="stage-heading">
+              <h2>Top Contenders</h2>
+              <p>Lower final score is better. Click a row to inspect it.</p>
+            </div>
+            <div id="statusMessage" class="status-message">Loading cap coordinates...</div>
+            <div class="table-wrap">
+              <table id="resultsTable">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Score</th>
+                    <th>Region</th>
+                    <th>Candidate</th>
+                    <th>Replacements</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
