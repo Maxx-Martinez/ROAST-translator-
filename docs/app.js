@@ -25,10 +25,14 @@ let capRows = [];
 let rowByLabel = new Map();
 let selectedCandidate = null;
 let suggestions = [];
+let activeEntryGroup = "original";
+let activeSlotIndex = 0;
 
 const svg = document.getElementById("capMap");
 const statusMessage = document.getElementById("statusMessage");
 const resultsBody = document.querySelector("#resultsTable tbody");
+const metricDetails = document.getElementById("metricDetails");
+const loadingOverlay = document.getElementById("loadingOverlay");
 
 function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/);
@@ -241,6 +245,11 @@ function importanceWeights() {
 }
 
 function scoreMontage(originalLabels, candidateLabels, weights, radius) {
+  if (originalLabels.length !== 5 || candidateLabels.length !== 5 || originalLabels.some((label) => !label) || candidateLabels.some((label) => !label)) {
+    throw new Error("Please enter exactly 5 electrode labels.");
+  }
+  originalLabels.forEach(getPoint);
+  candidateLabels.forEach(getPoint);
   const original = originalLabels.map(getPoint);
   const candidate = candidateLabels.map(getPoint);
   const paired = pairedDistances(original, candidate);
@@ -291,7 +300,7 @@ function cartesianProduct(arrays) {
 }
 
 function suggestReplacements() {
-  const originalLabels = readSelects("original");
+  const originalLabels = readInputs("original");
   const topN = Number(document.getElementById("topN").value);
   const poolSize = Number(document.getElementById("poolSize").value);
   const radius = Number(document.getElementById("electrodeRadius").value);
@@ -334,14 +343,15 @@ function suggestReplacements() {
   selectedCandidate = suggestions[0] || null;
   renderResults();
   renderMap(selectedCandidate);
+  renderMetricDetails(selectedCandidate);
   statusMessage.textContent = suggestions.length
     ? `${suggestions.length} contenders found.`
     : "No contenders met the current settings. Try lowering minimum region coverage or increasing pool size.";
 }
 
 function scoreManual() {
-  const originalLabels = readSelects("original");
-  const manualLabels = readSelects("manual");
+  const originalLabels = readInputs("original");
+  const manualLabels = readInputs("manual");
   const weights = importanceWeights();
   const radius = Number(document.getElementById("electrodeRadius").value);
   const score = scoreMontage(originalLabels, manualLabels, weights, radius);
@@ -349,6 +359,7 @@ function scoreManual() {
   score.keptOriginals = originalLabels.filter((label, index) => label === manualLabels[index]).join(", ") || "none";
   selectedCandidate = score;
   renderMap(score);
+  renderMetricDetails(score);
   document.getElementById("manualScore").innerHTML = `
     <strong>Manual score:</strong> ${score.finalScore.toFixed(3)}<br>
     Region coverage: ${score.percentOriginalRegionCovered.toFixed(1)}%<br>
@@ -356,28 +367,79 @@ function scoreManual() {
   `;
 }
 
-function readSelects(prefix) {
-  return Array.from(document.querySelectorAll(`[data-select-group="${prefix}"]`)).map((select) => select.value);
+function runWithStatus(action) {
+  try {
+    action();
+  } catch (error) {
+    statusMessage.textContent = error.message;
+  }
 }
 
-function makeSelect(group, value) {
-  const select = document.createElement("select");
-  select.dataset.selectGroup = group;
-  for (const row of capRows) {
-    const option = document.createElement("option");
-    option.value = row.label;
-    option.textContent = row.label;
-    if (row.label === value) option.selected = true;
-    select.appendChild(option);
+function setLoading(isLoading) {
+  loadingOverlay.classList.toggle("visible", isLoading);
+  loadingOverlay.setAttribute("aria-hidden", String(!isLoading));
+  document.getElementById("runButton").disabled = isLoading;
+  document.getElementById("scoreManualButton").disabled = isLoading;
+}
+
+async function runLongCalculation(action) {
+  setLoading(true);
+  statusMessage.textContent = "Calculating...";
+  await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+  try {
+    action();
+  } catch (error) {
+    statusMessage.textContent = error.message;
+  } finally {
+    setLoading(false);
   }
-  return select;
+}
+
+function readInputs(prefix) {
+  return Array.from(document.querySelectorAll(`[data-input-group="${prefix}"]`)).map((input) => normalizeLabel(input.value));
+}
+
+function normalizeLabel(value) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const match = capRows.find((row) => row.label.toLowerCase() === trimmed.toLowerCase());
+  return match ? match.label : trimmed;
+}
+
+function makeSiteInput(group, value, index) {
+  const input = document.createElement("input");
+  input.className = "site-input";
+  input.dataset.inputGroup = group;
+  input.dataset.index = String(index);
+  input.setAttribute("list", "siteOptions");
+  input.value = value;
+  input.placeholder = "Type site";
+  input.addEventListener("focus", () => {
+    activeEntryGroup = group;
+    activeSlotIndex = index;
+    renderActiveEntryMode();
+  });
+  input.addEventListener("input", () => {
+    input.value = input.value.trim();
+    renderMap(selectedCandidate);
+  });
+  return input;
 }
 
 function initControls() {
   const originalInputs = document.getElementById("originalInputs");
   const manualInputs = document.getElementById("manualInputs");
-  DEFAULT_ORIGINAL.forEach((label) => originalInputs.appendChild(makeSelect("original", label)));
-  DEFAULT_MANUAL.forEach((label) => manualInputs.appendChild(makeSelect("manual", label)));
+  const siteOptions = document.getElementById("siteOptions");
+  capRows.forEach((row) => {
+    const option = document.createElement("option");
+    option.value = row.label;
+    siteOptions.appendChild(option);
+  });
+  DEFAULT_ORIGINAL.forEach((label, index) => originalInputs.appendChild(makeSiteInput("original", label, index)));
+  DEFAULT_MANUAL.forEach((label, index) => manualInputs.appendChild(makeSiteInput("manual", label, index)));
+  document.getElementById("selectOriginalButton").addEventListener("click", () => setActiveEntryGroup("original"));
+  document.getElementById("selectManualButton").addEventListener("click", () => setActiveEntryGroup("manual"));
+  renderActiveEntryMode();
 
   const importanceControls = document.getElementById("importanceControls");
   for (const [key, label] of IMPORTANCE) {
@@ -394,20 +456,59 @@ function initControls() {
   }
 }
 
+function setActiveEntryGroup(group) {
+  activeEntryGroup = group;
+  activeSlotIndex = firstEmptySlot(group);
+  renderActiveEntryMode();
+}
+
+function firstEmptySlot(group) {
+  const inputs = Array.from(document.querySelectorAll(`[data-input-group="${group}"]`));
+  const empty = inputs.findIndex((input) => !input.value.trim());
+  return empty >= 0 ? empty : 0;
+}
+
+function renderActiveEntryMode() {
+  document.getElementById("selectOriginalButton").classList.toggle("active", activeEntryGroup === "original");
+  document.getElementById("selectManualButton").classList.toggle("active", activeEntryGroup === "manual");
+  document.querySelectorAll(".site-input").forEach((input) => {
+    input.classList.toggle("active-slot", input.dataset.inputGroup === activeEntryGroup && Number(input.dataset.index) === activeSlotIndex);
+  });
+}
+
+function fillFromMap(label) {
+  const inputs = Array.from(document.querySelectorAll(`[data-input-group="${activeEntryGroup}"]`));
+  const target = inputs[activeSlotIndex] || inputs[0];
+  target.value = label;
+  activeSlotIndex = (activeSlotIndex + 1) % inputs.length;
+  renderActiveEntryMode();
+  renderMap(selectedCandidate);
+}
+
 function scaleMapper() {
   const xs = capRows.map((row) => row.x);
   const ys = capRows.map((row) => row.y);
-  const minX = Math.min(...xs) - 0.8;
-  const maxX = Math.max(...xs) + 0.8;
-  const minY = Math.min(...ys) - 0.8;
-  const maxY = Math.max(...ys) + 1.0;
-  const width = 820;
-  const height = 720;
+  const minX = Math.floor(Math.min(...xs)) - 1;
+  const maxX = Math.ceil(Math.max(...xs)) + 1;
+  const minY = Math.floor(Math.min(...ys)) - 1;
+  const maxY = Math.ceil(Math.max(...ys)) + 1;
+  const width = 860;
+  const height = 760;
+  const pad = { left: 58, right: 22, top: 42, bottom: 58 };
+  const plotWidth = width - pad.left - pad.right;
+  const plotHeight = height - pad.top - pad.bottom;
   return {
     width,
     height,
-    x: (value) => ((value - minX) / (maxX - minX)) * width,
-    y: (value) => height - ((value - minY) / (maxY - minY)) * height,
+    minX,
+    maxX,
+    minY,
+    maxY,
+    pad,
+    plotWidth,
+    plotHeight,
+    x: (value) => pad.left + ((value - minX) / (maxX - minX)) * plotWidth,
+    y: (value) => pad.top + ((maxY - value) / (maxY - minY)) * plotHeight,
   };
 }
 
@@ -421,8 +522,93 @@ function polygonPoints(points, mapper) {
   return points.map((point) => `${mapper.x(point.x)},${mapper.y(point.y)}`).join(" ");
 }
 
+function renderGrid(mapper) {
+  const { minX, maxX, minY, maxY, pad, plotWidth, plotHeight } = mapper;
+  svg.appendChild(svgEl("rect", {
+    x: pad.left,
+    y: pad.top,
+    width: plotWidth,
+    height: plotHeight,
+    fill: "#ffffff",
+    stroke: "#2f3540",
+    "stroke-width": 1.5,
+  }));
+
+  for (let x = minX; x <= maxX; x += 1) {
+    const sx = mapper.x(x);
+    svg.appendChild(svgEl("line", { x1: sx, y1: pad.top, x2: sx, y2: pad.top + plotHeight, stroke: "#e5e7eb", "stroke-width": 1 }));
+    if (x % 2 === 0) {
+      const label = svgEl("text", { x: sx, y: pad.top + plotHeight + 28, "text-anchor": "middle", class: "axis-label" });
+      label.textContent = x;
+      svg.appendChild(label);
+    }
+  }
+  for (let y = minY; y <= maxY; y += 1) {
+    const sy = mapper.y(y);
+    svg.appendChild(svgEl("line", { x1: pad.left, y1: sy, x2: pad.left + plotWidth, y2: sy, stroke: "#e5e7eb", "stroke-width": 1 }));
+    if (y % 2 === 0) {
+      const label = svgEl("text", { x: pad.left - 18, y: sy + 4, "text-anchor": "middle", class: "axis-label" });
+      label.textContent = y;
+      svg.appendChild(label);
+    }
+  }
+
+  const xLabel = svgEl("text", { x: pad.left + plotWidth / 2, y: mapper.height - 12, "text-anchor": "middle", class: "axis-title" });
+  xLabel.textContent = "x";
+  svg.appendChild(xLabel);
+  const yLabel = svgEl("text", { x: 18, y: pad.top + plotHeight / 2, "text-anchor": "middle", class: "axis-title", transform: `rotate(-90 18 ${pad.top + plotHeight / 2})` });
+  yLabel.textContent = "y";
+  svg.appendChild(yLabel);
+
+  const title = svgEl("text", { x: pad.left + plotWidth / 2, y: 24, "text-anchor": "middle", class: "plot-title" });
+  title.textContent = "2D electrode layout";
+  svg.appendChild(title);
+}
+
+function renderLegend(mapper) {
+  const x = mapper.width - 190;
+  const y = 52;
+  svg.appendChild(svgEl("rect", { x, y, width: 165, height: 72, rx: 6, fill: "#fff", stroke: "#d6dce5" }));
+  svg.appendChild(svgEl("circle", { cx: x + 22, cy: y + 24, r: 13, fill: "#9bd4a2", stroke: "#3d7f49", "stroke-width": 2 }));
+  let text = svgEl("text", { x: x + 44, y: y + 29, class: "legend-label" });
+  text.textContent = "blocked EEG";
+  svg.appendChild(text);
+  svg.appendChild(svgEl("circle", { cx: x + 22, cy: y + 52, r: 13, fill: "#fff", stroke: "#667085", "stroke-width": 2, "stroke-dasharray": "6 4" }));
+  text = svgEl("text", { x: x + 44, y: y + 57, class: "legend-label" });
+  text.textContent = "open Soterix";
+  svg.appendChild(text);
+}
+
+function renderMetricDetails(candidate) {
+  if (!candidate) {
+    metricDetails.classList.remove("visible");
+    metricDetails.replaceChildren();
+    return;
+  }
+  const metrics = [
+    ["Final score", candidate.finalScore.toFixed(3)],
+    ["Original region covered", `${candidate.percentOriginalRegionCovered.toFixed(1)}%`],
+    ["Candidate region new", `${candidate.percentCandidateRegionNew.toFixed(1)}%`],
+    ["Footprint overlap", `${candidate.percentOriginalAreaCovered.toFixed(1)}%`],
+    ["Candidate footprint new", `${candidate.percentCandidateAreaNew.toFixed(1)}%`],
+    ["Mean movement", candidate.meanDistance.toFixed(3)],
+    ["Pairwise distance change", candidate.pairDistance.toFixed(3)],
+    ["Pairwise angle change", `${candidate.pairAngle.toFixed(1)}°`],
+    ["Center shift", candidate.centerShift.toFixed(3)],
+    ["Kept originals", candidate.keptOriginals || "none"],
+    ["Replacements", candidate.replacements || "none"],
+  ];
+  metricDetails.replaceChildren(...metrics.map(([label, value]) => {
+    const card = document.createElement("div");
+    card.className = "metric-card";
+    card.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+    return card;
+  }));
+  metricDetails.classList.add("visible");
+}
+
 function renderMap(candidate) {
-  const originalLabels = readSelects("original");
+  const originalLabels = readInputs("original").filter(Boolean);
   const candidateLabels = candidate ? candidate.candidateLabels : [];
   const originalSet = new Set(originalLabels);
   const candidateSet = new Set(candidateLabels);
@@ -430,21 +616,7 @@ function renderMap(candidate) {
   svg.replaceChildren();
   svg.setAttribute("viewBox", `0 0 ${mapper.width} ${mapper.height}`);
 
-  svg.appendChild(svgEl("ellipse", {
-    cx: mapper.x(0),
-    cy: mapper.y(0.25),
-    rx: 380,
-    ry: 300,
-    fill: "none",
-    stroke: "#4b5563",
-    "stroke-width": 2,
-  }));
-  svg.appendChild(svgEl("polygon", {
-    points: `${mapper.x(-0.36)},${mapper.y(4.95)} ${mapper.x(0)},${mapper.y(5.65)} ${mapper.x(0.36)},${mapper.y(4.95)}`,
-    fill: "none",
-    stroke: "#4b5563",
-    "stroke-width": 2,
-  }));
+  renderGrid(mapper);
 
   if (candidate?.originalHull?.length) {
     svg.appendChild(svgEl("polygon", {
@@ -452,13 +624,13 @@ function renderMap(candidate) {
       fill: "rgba(32,177,90,0.10)",
       stroke: "#20b15a",
       "stroke-width": 2,
-      "stroke-dasharray": "5 4",
+      "stroke-dasharray": "6 4",
     }));
     svg.appendChild(svgEl("polygon", {
       points: polygonPoints(candidate.candidateHull, mapper),
-      fill: "rgba(141,75,232,0.12)",
+      fill: "rgba(141,75,232,0.14)",
       stroke: "#8d4be8",
-      "stroke-width": 2,
+      "stroke-width": 2.2,
     }));
   }
 
@@ -467,39 +639,34 @@ function renderMap(candidate) {
     const cy = mapper.y(row.y);
     const inOriginal = originalSet.has(row.label);
     const inCandidate = candidateSet.has(row.label);
-    let fill = "#fff";
-    let stroke = "#667085";
-    let dash = "4 3";
-    if (row.status === "blocked") {
-      fill = "#e15050";
-      stroke = "#991b1b";
-      dash = "";
-    }
+    const g = svgEl("g", { class: "cap-site", "data-label": row.label });
+    g.addEventListener("click", () => fillFromMap(row.label));
+
     if (inOriginal && inCandidate) {
-      svg.appendChild(svgEl("path", { d: `M ${cx} ${cy - 15} A 15 15 0 0 0 ${cx} ${cy + 15} L ${cx} ${cy} Z`, fill: "#20b15a", stroke: "#172033" }));
-      svg.appendChild(svgEl("path", { d: `M ${cx} ${cy - 15} A 15 15 0 0 1 ${cx} ${cy + 15} L ${cx} ${cy} Z`, fill: "#8d4be8", stroke: "#172033" }));
+      g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 16} A 16 16 0 0 0 ${cx} ${cy + 16} L ${cx} ${cy} Z`, fill: "#20b15a", stroke: "#172033", "stroke-width": 1.4 }));
+      g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 16} A 16 16 0 0 1 ${cx} ${cy + 16} L ${cx} ${cy} Z`, fill: "#8d4be8", stroke: "#172033", "stroke-width": 1.4 }));
+    } else if (inOriginal) {
+      g.appendChild(svgEl("circle", { cx, cy, r: 16, fill: "#20b15a", stroke: "#166534", "stroke-width": 2 }));
+    } else if (inCandidate) {
+      g.appendChild(svgEl("circle", { cx, cy, r: 16, fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2 }));
+    } else if (row.status === "blocked") {
+      g.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "#9bd4a2", stroke: "#3d7f49", "stroke-width": 2 }));
     } else {
-      if (inOriginal) {
-        fill = "#20b15a";
-        stroke = "#166534";
-        dash = "";
-      }
-      if (inCandidate) {
-        fill = "#8d4be8";
-        stroke = "#6b21a8";
-        dash = "";
-      }
-      svg.appendChild(svgEl("circle", { cx, cy, r: inOriginal || inCandidate ? 16 : 12, fill, stroke, "stroke-width": 1.5, "stroke-dasharray": dash }));
+      g.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "#fff", stroke: "#667085", "stroke-width": 2, "stroke-dasharray": "6 4" }));
     }
-    const text = svgEl("text", { x: cx, y: cy + 3, "text-anchor": "middle", class: inOriginal || inCandidate ? "map-label" : "map-label-muted", fill: row.status === "blocked" && !inOriginal && !inCandidate ? "#fff" : "#172033" });
+
+    const text = svgEl("text", { x: cx, y: cy + 4, "text-anchor": "middle", class: inOriginal || inCandidate ? "map-label" : "map-label-muted", fill: "#172033" });
     text.textContent = row.label;
-    svg.appendChild(text);
+    g.appendChild(text);
+    svg.appendChild(g);
   }
+
+  renderLegend(mapper);
 
   if (candidate) {
     document.getElementById("selectedSummary").textContent = `${candidate.candidateMontage} | region ${candidate.percentOriginalRegionCovered.toFixed(1)}% | score ${candidate.finalScore.toFixed(3)}`;
   } else {
-    document.getElementById("selectedSummary").textContent = "Run suggestions to view a candidate.";
+    document.getElementById("selectedSummary").textContent = "Click the map to fill montage slots, or run suggestions to view a candidate.";
   }
 }
 
@@ -519,6 +686,7 @@ function renderResults() {
       selectedCandidate = row;
       renderResults();
       renderMap(row);
+      renderMetricDetails(row);
     });
     resultsBody.appendChild(tr);
   });
@@ -530,8 +698,8 @@ async function main() {
     initControls();
     renderMap(null);
     statusMessage.textContent = "Ready.";
-    document.getElementById("runButton").addEventListener("click", suggestReplacements);
-    document.getElementById("scoreManualButton").addEventListener("click", scoreManual);
+    document.getElementById("runButton").addEventListener("click", () => runLongCalculation(suggestReplacements));
+    document.getElementById("scoreManualButton").addEventListener("click", () => runWithStatus(scoreManual));
   } catch (error) {
     statusMessage.textContent = error.message;
   }
