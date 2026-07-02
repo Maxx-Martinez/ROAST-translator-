@@ -35,6 +35,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: flex;
+  flex-wrap: wrap;
   gap: 18px;
   justify-content: space-between;
   padding: 16px 18px;
@@ -168,7 +169,7 @@ input[type="range"] {
 .primary-button {
   background: var(--blue);
   color: #fff;
-  min-width: 170px;
+  min-width: min(170px, 100%);
 }
 
 .secondary-button {
