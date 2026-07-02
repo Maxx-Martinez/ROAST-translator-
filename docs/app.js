@@ -376,7 +376,7 @@ function runWithStatus(action) {
 }
 
 function setLoading(isLoading) {
-  loadingOverlay.classList.toggle("visible", isLoading);
+  loadingOverlay.hidden = !isLoading;
   loadingOverlay.setAttribute("aria-hidden", String(!isLoading));
   document.getElementById("runButton").disabled = isLoading;
   document.getElementById("scoreManualButton").disabled = isLoading;
@@ -408,10 +408,12 @@ function normalizeLabel(value) {
 
 function makeSiteInput(group, value, index) {
   const input = document.createElement("input");
+  input.type = "text";
   input.className = "site-input";
   input.dataset.inputGroup = group;
   input.dataset.index = String(index);
-  input.setAttribute("list", "siteOptions");
+  input.autocomplete = "off";
+  input.spellcheck = false;
   input.value = value;
   input.placeholder = "Type site";
   input.addEventListener("focus", () => {
@@ -429,12 +431,6 @@ function makeSiteInput(group, value, index) {
 function initControls() {
   const originalInputs = document.getElementById("originalInputs");
   const manualInputs = document.getElementById("manualInputs");
-  const siteOptions = document.getElementById("siteOptions");
-  capRows.forEach((row) => {
-    const option = document.createElement("option");
-    option.value = row.label;
-    siteOptions.appendChild(option);
-  });
   DEFAULT_ORIGINAL.forEach((label, index) => originalInputs.appendChild(makeSiteInput("original", label, index)));
   DEFAULT_MANUAL.forEach((label, index) => manualInputs.appendChild(makeSiteInput("manual", label, index)));
   document.getElementById("selectOriginalButton").addEventListener("click", () => setActiveEntryGroup("original"));
@@ -536,7 +532,7 @@ function renderGrid(mapper) {
 
   for (let x = minX; x <= maxX; x += 1) {
     const sx = mapper.x(x);
-    svg.appendChild(svgEl("line", { x1: sx, y1: pad.top, x2: sx, y2: pad.top + plotHeight, stroke: "#e5e7eb", "stroke-width": 1 }));
+    svg.appendChild(svgEl("line", { x1: sx, y1: pad.top, x2: sx, y2: pad.top + plotHeight, class: "grid-line" }));
     if (x % 2 === 0) {
       const label = svgEl("text", { x: sx, y: pad.top + plotHeight + 28, "text-anchor": "middle", class: "axis-label" });
       label.textContent = x;
@@ -545,7 +541,7 @@ function renderGrid(mapper) {
   }
   for (let y = minY; y <= maxY; y += 1) {
     const sy = mapper.y(y);
-    svg.appendChild(svgEl("line", { x1: pad.left, y1: sy, x2: pad.left + plotWidth, y2: sy, stroke: "#e5e7eb", "stroke-width": 1 }));
+    svg.appendChild(svgEl("line", { x1: pad.left, y1: sy, x2: pad.left + plotWidth, y2: sy, class: "grid-line" }));
     if (y % 2 === 0) {
       const label = svgEl("text", { x: pad.left - 18, y: sy + 4, "text-anchor": "middle", class: "axis-label" });
       label.textContent = y;
@@ -563,6 +559,20 @@ function renderGrid(mapper) {
   const title = svgEl("text", { x: pad.left + plotWidth / 2, y: 24, "text-anchor": "middle", class: "plot-title" });
   title.textContent = "2D electrode layout";
   svg.appendChild(title);
+}
+
+function renderHeadGuide(mapper) {
+  svg.appendChild(svgEl("ellipse", {
+    cx: mapper.x(0),
+    cy: mapper.y(0.2),
+    rx: Math.abs(mapper.x(4.6) - mapper.x(0)),
+    ry: Math.abs(mapper.y(4.55) - mapper.y(0.2)),
+    class: "head-guide",
+  }));
+  svg.appendChild(svgEl("polygon", {
+    points: `${mapper.x(-0.34)},${mapper.y(4.6)} ${mapper.x(0)},${mapper.y(5.28)} ${mapper.x(0.34)},${mapper.y(4.6)}`,
+    class: "head-guide",
+  }));
 }
 
 function renderLegend(mapper) {
@@ -617,6 +627,7 @@ function renderMap(candidate) {
   svg.setAttribute("viewBox", `0 0 ${mapper.width} ${mapper.height}`);
 
   renderGrid(mapper);
+  renderHeadGuide(mapper);
 
   if (candidate?.originalHull?.length) {
     svg.appendChild(svgEl("polygon", {
@@ -640,7 +651,17 @@ function renderMap(candidate) {
     const inOriginal = originalSet.has(row.label);
     const inCandidate = candidateSet.has(row.label);
     const g = svgEl("g", { class: "cap-site", "data-label": row.label });
-    g.addEventListener("click", () => fillFromMap(row.label));
+    g.setAttribute("role", "button");
+    g.setAttribute("aria-label", `Select ${row.label}`);
+    g.setAttribute("tabindex", "0");
+    const chooseSite = (event) => {
+      event.preventDefault();
+      fillFromMap(row.label);
+    };
+    g.addEventListener("pointerdown", chooseSite);
+    g.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") chooseSite(event);
+    });
 
     if (inOriginal && inCandidate) {
       g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 16} A 16 16 0 0 0 ${cx} ${cy + 16} L ${cx} ${cy} Z`, fill: "#20b15a", stroke: "#172033", "stroke-width": 1.4 }));
@@ -655,7 +676,14 @@ function renderMap(candidate) {
       g.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "#fff", stroke: "#667085", "stroke-width": 2, "stroke-dasharray": "6 4" }));
     }
 
-    const text = svgEl("text", { x: cx, y: cy + 4, "text-anchor": "middle", class: inOriginal || inCandidate ? "map-label" : "map-label-muted", fill: "#172033" });
+    const text = svgEl("text", {
+      x: cx,
+      y: cy,
+      "text-anchor": "middle",
+      "dominant-baseline": "middle",
+      class: inOriginal || inCandidate ? "map-label" : "map-label-muted",
+      fill: "#172033",
+    });
     text.textContent = row.label;
     g.appendChild(text);
     svg.appendChild(g);

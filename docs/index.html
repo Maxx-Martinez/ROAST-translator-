@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ROAST Translator</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260702-v3-map-loader" />
   </head>
   <body>
     <main class="app-shell">
@@ -101,15 +101,16 @@
         </section>
       </section>
     </main>
-    <datalist id="siteOptions"></datalist>
-    <div id="loadingOverlay" class="loading-overlay" aria-live="polite" aria-hidden="true">
+    <div id="loadingOverlay" class="loading-overlay" aria-live="polite" aria-hidden="true" hidden>
       <div class="loading-box">
-        <div class="spinner"></div>
         <strong>Calculating replacements</strong>
+        <div class="progress-track">
+          <div class="progress-bar"></div>
+        </div>
         <span>Scoring candidate montages with your current settings...</span>
       </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260702-v3-map-loader"></script>
   </body>
 </html>
