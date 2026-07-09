@@ -57,13 +57,14 @@ function parseCsv(text) {
       label: row.label.trim(),
       x: Number(row.x),
       y: Number(row.y),
+      z: row.z === undefined || row.z === "" ? 0 : Number(row.z),
       status: row.status.trim().toLowerCase(),
     };
   });
 }
 
 async function loadCoordinates() {
-  const response = await fetch("data/easycap_cac64_soterix_draft.csv");
+  const response = await fetch("data/easycap_cac64_soterix_draft.csv?v=20260709-v5-geometry-modes");
   if (!response.ok) throw new Error("Could not load coordinate CSV.");
   capRows = parseCsv(await response.text());
   rowByLabel = new Map(capRows.map((row) => [row.label, row]));
@@ -72,15 +73,49 @@ async function loadCoordinates() {
 function getPoint(label) {
   const row = rowByLabel.get(label);
   if (!row) throw new Error(`Unknown label: ${label}`);
-  return { x: row.x, y: row.y, label: row.label, status: row.status };
+  return { x: row.x, y: row.y, z: row.z, label: row.label, status: row.status };
 }
 
-function distance(a, b) {
+function calculationGeometry() {
+  return document.querySelector('input[name="calculationGeometry"]:checked')?.value || "2d";
+}
+
+function distance2d(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function angle(a, b) {
+function distanceForGeometry(a, b, geometry) {
+  if (geometry === "3d") return Math.hypot(a.x - b.x, a.y - b.y, (a.z || 0) - (b.z || 0));
+  return distance2d(a, b);
+}
+
+function geometryScale(geometry) {
+  const xs = capRows.map((row) => row.x);
+  const ys = capRows.map((row) => row.y);
+  const zs = capRows.map((row) => row.z || 0);
+  const dx = Math.max(...xs) - Math.min(...xs);
+  const dy = Math.max(...ys) - Math.min(...ys);
+  const dz = Math.max(...zs) - Math.min(...zs);
+  const diagonal = geometry === "3d" ? Math.hypot(dx, dy, dz) : Math.hypot(dx, dy);
+  return diagonal / 10;
+}
+
+function angle2d(a, b) {
   return (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+}
+
+function vector3d(a, b) {
+  const x = b.x - a.x;
+  const y = b.y - a.y;
+  const z = (b.z || 0) - (a.z || 0);
+  const length = Math.hypot(x, y, z);
+  if (!length) return { x: 0, y: 0, z: 0 };
+  return { x: x / length, y: y / length, z: z / length };
+}
+
+function angleBetweenVectors(a, b) {
+  const dot = Math.max(-1, Math.min(1, a.x * b.x + a.y * b.y + a.z * b.z));
+  return (Math.acos(dot) * 180) / Math.PI;
 }
 
 function angleDiff(a, b) {
@@ -88,39 +123,51 @@ function angleDiff(a, b) {
   return Math.min(diff, 360 - diff);
 }
 
-function center(points) {
-  return {
+function center(points, geometry) {
+  const point = {
     x: points.reduce((sum, point) => sum + point.x, 0) / points.length,
     y: points.reduce((sum, point) => sum + point.y, 0) / points.length,
   };
+  if (geometry === "3d") {
+    point.z = points.reduce((sum, item) => sum + (item.z || 0), 0) / points.length;
+  }
+  return point;
 }
 
-function pairedDistances(original, candidate) {
-  return original.map((point, index) => distance(point, candidate[index]));
+function pairedDistances(original, candidate, geometry) {
+  return original.map((point, index) => distanceForGeometry(point, candidate[index], geometry));
 }
 
 function mean(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function pairwiseDistanceChange(original, candidate) {
+function pairwiseDistanceChange(original, candidate, geometry) {
   const changes = [];
   for (let i = 0; i < original.length; i += 1) {
     for (let j = i + 1; j < original.length; j += 1) {
-      changes.push(Math.abs(distance(original[i], original[j]) - distance(candidate[i], candidate[j])));
+      changes.push(Math.abs(distanceForGeometry(original[i], original[j], geometry) - distanceForGeometry(candidate[i], candidate[j], geometry)));
     }
   }
   return mean(changes);
 }
 
-function pairwiseAngleChange(original, candidate) {
+function pairwiseAngleChange(original, candidate, geometry) {
   const changes = [];
   for (let i = 0; i < original.length; i += 1) {
     for (let j = i + 1; j < original.length; j += 1) {
-      changes.push(angleDiff(angle(original[i], original[j]), angle(candidate[i], candidate[j])));
+      if (geometry === "3d") {
+        changes.push(angleBetweenVectors(vector3d(original[i], original[j]), vector3d(candidate[i], candidate[j])));
+      } else {
+        changes.push(angleDiff(angle2d(original[i], original[j]), angle2d(candidate[i], candidate[j])));
+      }
     }
   }
   return mean(changes);
+}
+
+function as2dPoints(points) {
+  return points.map((point) => ({ ...point, z: 0 }));
 }
 
 function convexHull(points) {
@@ -199,8 +246,8 @@ function intersectConvexPolygons(subject, clip) {
 }
 
 function regionMetrics(original, candidate) {
-  const originalHull = convexHull(original);
-  const candidateHull = convexHull(candidate);
+  const originalHull = convexHull(as2dPoints(original));
+  const candidateHull = convexHull(as2dPoints(candidate));
   const overlap = intersectConvexPolygons(originalHull, candidateHull);
   const originalArea = Math.abs(polygonArea(originalHull));
   const candidateArea = Math.abs(polygonArea(candidateHull));
@@ -215,10 +262,12 @@ function regionMetrics(original, candidate) {
 }
 
 function footprintMetrics(original, candidate, radius) {
-  const minX = Math.min(...original.concat(candidate).map((p) => p.x)) - radius;
-  const maxX = Math.max(...original.concat(candidate).map((p) => p.x)) + radius;
-  const minY = Math.min(...original.concat(candidate).map((p) => p.y)) - radius;
-  const maxY = Math.max(...original.concat(candidate).map((p) => p.y)) + radius;
+  const original2d = as2dPoints(original);
+  const candidate2d = as2dPoints(candidate);
+  const minX = Math.min(...original2d.concat(candidate2d).map((p) => p.x)) - radius;
+  const maxX = Math.max(...original2d.concat(candidate2d).map((p) => p.x)) + radius;
+  const minY = Math.min(...original2d.concat(candidate2d).map((p) => p.y)) - radius;
+  const maxY = Math.max(...original2d.concat(candidate2d).map((p) => p.y)) + radius;
   const steps = 42;
   const dx = (maxX - minX) / steps;
   const dy = (maxY - minY) / steps;
@@ -229,8 +278,8 @@ function footprintMetrics(original, candidate, radius) {
   for (let ix = 0; ix < steps; ix += 1) {
     for (let iy = 0; iy < steps; iy += 1) {
       const sample = { x: minX + (ix + 0.5) * dx, y: minY + (iy + 0.5) * dy };
-      const inOriginal = original.some((point) => distance(point, sample) <= radius);
-      const inCandidate = candidate.some((point) => distance(point, sample) <= radius);
+      const inOriginal = original2d.some((point) => distance2d(point, sample) <= radius);
+      const inCandidate = candidate2d.some((point) => distance2d(point, sample) <= radius);
       if (inOriginal) originalCount += 1;
       if (inCandidate) candidateCount += 1;
       if (inOriginal && inCandidate) overlapCount += 1;
@@ -260,27 +309,30 @@ function scoreMontage(originalLabels, candidateLabels, weights, radius) {
   }
   originalLabels.forEach(getPoint);
   candidateLabels.forEach(getPoint);
+  const geometry = calculationGeometry();
   const original = originalLabels.map(getPoint);
   const candidate = candidateLabels.map(getPoint);
-  const paired = pairedDistances(original, candidate);
+  const paired = pairedDistances(original, candidate, geometry);
   const region = regionMetrics(original, candidate);
   const footprint = footprintMetrics(original, candidate, radius);
-  const shift = distance(center(original), center(candidate));
+  const shift = distanceForGeometry(center(original, geometry), center(candidate, geometry), geometry);
   const meanDistance = mean(paired);
-  const pairDistance = pairwiseDistanceChange(original, candidate);
-  const pairAngle = pairwiseAngleChange(original, candidate);
+  const pairDistance = pairwiseDistanceChange(original, candidate, geometry);
+  const pairAngle = pairwiseAngleChange(original, candidate, geometry);
+  const scale = geometryScale(geometry);
   const score =
-    weights.distance * Math.min(meanDistance / 2, 1) +
-    weights.pairwiseDistance * Math.min(pairDistance / 2, 1) +
+    weights.distance * Math.min(meanDistance / scale, 1) +
+    weights.pairwiseDistance * Math.min(pairDistance / scale, 1) +
     weights.pairwiseAngle * Math.min(pairAngle / 90, 1) +
     weights.regionCoverage * ((100 - region.percentOriginalRegionCovered) / 100) +
     weights.footprintCoverage * ((100 - footprint.percentOriginalAreaCovered) / 100) +
     weights.newArea * (footprint.percentCandidateAreaNew / 100) +
-    weights.centerShift * Math.min(shift / 2, 1);
+    weights.centerShift * Math.min(shift / scale, 1);
 
   return {
     candidateLabels,
     candidateMontage: candidateLabels.join(", "),
+    calculationGeometry: geometry.toUpperCase(),
     finalScore: score,
     meanDistance,
     pairDistance,
@@ -297,9 +349,10 @@ function scoreMontage(originalLabels, candidateLabels, weights, radius) {
 
 function nearestOpenLabels(targetLabel, poolSize, excludeLabels) {
   const target = getPoint(targetLabel);
+  const geometry = calculationGeometry();
   return capRows
     .filter((row) => row.status === "open" && !excludeLabels.has(row.label))
-    .map((row) => ({ label: row.label, distance: distance(target, row) }))
+    .map((row) => ({ label: row.label, distance: distanceForGeometry(target, row, geometry) }))
     .sort((a, b) => a.distance - b.distance)
     .slice(0, poolSize)
     .map((row) => row.label);
@@ -607,6 +660,7 @@ function renderMetricDetails(candidate) {
   }
   const metrics = [
     ["Final score", candidate.finalScore.toFixed(3)],
+    ["Calculation geometry", candidate.calculationGeometry],
     ["Original region covered", `${candidate.percentOriginalRegionCovered.toFixed(1)}%`],
     ["Candidate region new", `${candidate.percentCandidateRegionNew.toFixed(1)}%`],
     ["Footprint overlap", `${candidate.percentOriginalAreaCovered.toFixed(1)}%`],
@@ -703,7 +757,7 @@ function renderMap(candidate) {
   renderLegend(mapper);
 
   if (candidate) {
-    document.getElementById("selectedSummary").textContent = `${candidate.candidateMontage} | region ${candidate.percentOriginalRegionCovered.toFixed(1)}% | score ${candidate.finalScore.toFixed(3)}`;
+    document.getElementById("selectedSummary").textContent = `${candidate.candidateMontage} | ${candidate.calculationGeometry} calc | region ${candidate.percentOriginalRegionCovered.toFixed(1)}% | score ${candidate.finalScore.toFixed(3)}`;
   } else {
     document.getElementById("selectedSummary").textContent = "Click the map to fill montage slots, or run suggestions to view a candidate.";
   }
@@ -739,6 +793,16 @@ async function main() {
     statusMessage.textContent = "Ready.";
     document.getElementById("runButton").addEventListener("click", () => runLongCalculation(suggestReplacements));
     document.getElementById("scoreManualButton").addEventListener("click", () => runWithStatus(scoreManual));
+    document.querySelectorAll('input[name="calculationGeometry"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        suggestions = [];
+        selectedCandidate = null;
+        resultsBody.replaceChildren();
+        renderMetricDetails(null);
+        renderMap(null);
+        statusMessage.textContent = `Ready. Using ${calculationGeometry().toUpperCase()} calculations.`;
+      });
+    });
   } catch (error) {
     statusMessage.textContent = error.message;
   }
