@@ -335,16 +335,6 @@ tbody tr.selected {
   font-weight: 500;
 }
 
-.axis-title {
-  fill: #111827;
-  font-size: 14px;
-}
-
-.axis-label {
-  fill: #111827;
-  font-size: 12px;
-}
-
 .legend-label {
   fill: #111827;
   font-size: 14px;
@@ -422,22 +412,25 @@ tbody tr.selected {
 .head-guide {
   fill: none;
   stroke: #475467;
-  stroke-width: 1.6;
+  stroke-width: 1.7;
 }
 
-.grid-line {
-  stroke: #e7ebf0;
-  stroke-width: 1;
+.cap-guide-faint {
+  fill: none;
+  stroke: #98a2b3;
+  stroke-linecap: round;
+  stroke-width: 1.1;
+  opacity: 0.62;
 }
 
 .map-label {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   pointer-events: none;
 }
 
 .map-label-muted {
-  font-size: 10px;
+  font-size: 9.5px;
   pointer-events: none;
 }
 

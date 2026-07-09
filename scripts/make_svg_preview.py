@@ -38,7 +38,7 @@ def main() -> None:
         '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">',
         '<rect width="900" height="900" fill="white"/>',
         '<circle cx="450" cy="450" r="380" fill="none" stroke="#777" stroke-width="2"/>',
-        '<text x="450" y="35" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">Draft EasyCap CAC-64 / Soterix Coordinate Preview</text>',
+        '<text x="450" y="35" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700">EasyCap CAC-64 / Soterix Coordinate Preview</text>',
         '<text x="450" y="62" text-anchor="middle" font-family="Arial" font-size="14" fill="#555">Blocked EEG holders are filled; open Soterix holes are dashed.</text>',
     ]
 

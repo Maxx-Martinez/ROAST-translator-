@@ -21,7 +21,7 @@ rerun ROAST and review the electric field before using the montage.
 ## Files
 
 - `data/cap_locations_template.csv` - starter coordinate table format
-- `data/easycap_cac64_soterix_draft.csv` - draft coordinate map from the provided EasyCap/Soterix image
+- `data/easycap_cac64_soterix_draft.csv` - cap coordinate map using the workbook's Realistic Head Model x/y coordinates
 - `notebooks/01_coordinates_visualization_and_single_ranking.ipynb` - first Colab notebook milestone
 - `notebooks/02_current_workbook_with_target_ranking.ipynb` - your current workbook plus target and montage ranking cells
 - `notebooks/03_montage_similarity_scoring_colab.ipynb` - self-contained Colab notebook for original-vs-candidate montage scoring
@@ -51,9 +51,9 @@ FCC4h,2.5,2.1,open
 - `open` - valid stimulation location
 - `blocked` - occupied by EEG or otherwise unavailable
 
-The x/y coordinates can start as diagram coordinates from the cap PDF. They do
-not need to be anatomical 3D coordinates for this first geometry-preserving tool,
-but they should be internally consistent.
+The x/y coordinates should be internally consistent. The included
+EasyCap/Soterix map uses the workbook's Realistic Head Model x/y coordinates,
+preserving the current open/blocked stimulation-site labels.
 
 ## Usage
 
@@ -139,5 +139,5 @@ Start in Colab with:
    - `electrode_layout_3D.png`
    - `targets.csv`
    - `ranked_single_electrodes.csv`
-4. Correct the coordinate CSV until the plotted layout matches the cap diagram.
+4. Review the plotted coordinate map against the source workbook/cap layout.
 5. Add pair and montage ranking only after the coordinate map looks right.

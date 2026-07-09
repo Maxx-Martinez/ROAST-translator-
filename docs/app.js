@@ -21,6 +21,16 @@ const DEFAULT_IMPORTANCE = {
   centerShift: 2,
 };
 
+const GREEN_EEG_LABELS = new Set([
+  "Fp1", "Fp2",
+  "F7", "F3", "Fz", "F4", "F8",
+  "FC5", "FC1", "FC2", "FC6",
+  "T7", "C3", "Cz", "C4", "T8",
+  "TP9", "CP5", "CP1", "CP2", "CP6", "TP10",
+  "P7", "P3", "Pz", "P4", "P8",
+  "PO9", "O1", "Oz", "O2", "PO10",
+]);
+
 let capRows = [];
 let rowByLabel = new Map();
 let selectedCandidate = null;
@@ -484,15 +494,22 @@ function fillFromMap(label) {
 function scaleMapper() {
   const xs = capRows.map((row) => row.x);
   const ys = capRows.map((row) => row.y);
-  const minX = Math.floor(Math.min(...xs)) - 1;
-  const maxX = Math.ceil(Math.max(...xs)) + 1;
-  const minY = Math.floor(Math.min(...ys)) - 1;
-  const maxY = Math.ceil(Math.max(...ys)) + 1;
-  const width = 860;
-  const height = 760;
-  const pad = { left: 58, right: 22, top: 42, bottom: 58 };
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const width = 900;
+  const height = 820;
+  const pad = { left: 42, right: 42, top: 48, bottom: 42 };
   const plotWidth = width - pad.left - pad.right;
   const plotHeight = height - pad.top - pad.bottom;
+  const dataWidth = maxX - minX;
+  const dataHeight = maxY - minY;
+  const scale = Math.min(plotWidth / dataWidth, plotHeight / dataHeight) * 0.9;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+  const canvasCenterX = width / 2;
+  const canvasCenterY = height / 2 + 14;
   return {
     width,
     height,
@@ -503,8 +520,12 @@ function scaleMapper() {
     pad,
     plotWidth,
     plotHeight,
-    x: (value) => pad.left + ((value - minX) / (maxX - minX)) * plotWidth,
-    y: (value) => pad.top + ((maxY - value) / (maxY - minY)) * plotHeight,
+    centerX,
+    centerY,
+    dataWidth,
+    dataHeight,
+    x: (value) => canvasCenterX + (value - centerX) * scale,
+    y: (value) => canvasCenterY - (value - centerY) * scale,
   };
 }
 
@@ -518,73 +539,62 @@ function polygonPoints(points, mapper) {
   return points.map((point) => `${mapper.x(point.x)},${mapper.y(point.y)}`).join(" ");
 }
 
-function renderGrid(mapper) {
-  const { minX, maxX, minY, maxY, pad, plotWidth, plotHeight } = mapper;
-  svg.appendChild(svgEl("rect", {
-    x: pad.left,
-    y: pad.top,
-    width: plotWidth,
-    height: plotHeight,
-    fill: "#ffffff",
-    stroke: "#2f3540",
-    "stroke-width": 1.5,
-  }));
-
-  for (let x = minX; x <= maxX; x += 1) {
-    const sx = mapper.x(x);
-    svg.appendChild(svgEl("line", { x1: sx, y1: pad.top, x2: sx, y2: pad.top + plotHeight, class: "grid-line" }));
-    if (x % 2 === 0) {
-      const label = svgEl("text", { x: sx, y: pad.top + plotHeight + 28, "text-anchor": "middle", class: "axis-label" });
-      label.textContent = x;
-      svg.appendChild(label);
-    }
-  }
-  for (let y = minY; y <= maxY; y += 1) {
-    const sy = mapper.y(y);
-    svg.appendChild(svgEl("line", { x1: pad.left, y1: sy, x2: pad.left + plotWidth, y2: sy, class: "grid-line" }));
-    if (y % 2 === 0) {
-      const label = svgEl("text", { x: pad.left - 18, y: sy + 4, "text-anchor": "middle", class: "axis-label" });
-      label.textContent = y;
-      svg.appendChild(label);
-    }
-  }
-
-  const xLabel = svgEl("text", { x: pad.left + plotWidth / 2, y: mapper.height - 12, "text-anchor": "middle", class: "axis-title" });
-  xLabel.textContent = "x";
-  svg.appendChild(xLabel);
-  const yLabel = svgEl("text", { x: 18, y: pad.top + plotHeight / 2, "text-anchor": "middle", class: "axis-title", transform: `rotate(-90 18 ${pad.top + plotHeight / 2})` });
-  yLabel.textContent = "y";
-  svg.appendChild(yLabel);
-
-  const title = svgEl("text", { x: pad.left + plotWidth / 2, y: 24, "text-anchor": "middle", class: "plot-title" });
-  title.textContent = "2D electrode layout";
-  svg.appendChild(title);
+function holderPath(cx, cy, radius) {
+  const top = cy - radius * 0.85;
+  const sideTop = cy - radius * 0.1;
+  const bottom = cy + radius * 0.72;
+  return [
+    `M ${cx - radius * 0.8} ${bottom}`,
+    `L ${cx - radius * 0.8} ${sideTop}`,
+    `A ${radius * 0.8} ${radius * 0.8} 0 0 1 ${cx + radius * 0.8} ${sideTop}`,
+    `L ${cx + radius * 0.8} ${bottom}`,
+    "Z",
+  ].join(" ");
 }
 
 function renderHeadGuide(mapper) {
-  svg.appendChild(svgEl("ellipse", {
-    cx: mapper.x(0),
-    cy: mapper.y(0.2),
-    rx: Math.abs(mapper.x(4.6) - mapper.x(0)),
-    ry: Math.abs(mapper.y(4.55) - mapper.y(0.2)),
+  const guides = svgEl("g", { class: "cap-guides" });
+  const cx = mapper.x(mapper.centerX);
+  const cy = mapper.y(mapper.centerY);
+  const outerRx = Math.abs(mapper.x(mapper.centerX + mapper.dataWidth * 0.56) - cx);
+  const outerRy = Math.abs(mapper.y(mapper.centerY + mapper.dataHeight * 0.54) - cy);
+  const ringRadii = [0.82, 0.62, 0.42, 0.22];
+
+  guides.appendChild(svgEl("ellipse", {
+    cx,
+    cy,
+    rx: outerRx,
+    ry: outerRy,
     class: "head-guide",
   }));
+  for (const radius of ringRadii) {
+    guides.appendChild(svgEl("ellipse", {
+      cx,
+      cy,
+      rx: outerRx * radius,
+      ry: outerRy * radius,
+      class: "cap-guide-faint",
+    }));
+  }
+  svg.appendChild(guides);
   svg.appendChild(svgEl("polygon", {
-    points: `${mapper.x(-0.34)},${mapper.y(4.6)} ${mapper.x(0)},${mapper.y(5.28)} ${mapper.x(0.34)},${mapper.y(4.6)}`,
+    points: `${cx - 42},${cy - outerRy} ${cx},${cy - outerRy - 64} ${cx + 42},${cy - outerRy}`,
     class: "head-guide",
   }));
 }
 
 function renderLegend(mapper) {
-  const x = mapper.width - 190;
+  const x = mapper.width - 212;
   const y = 52;
-  svg.appendChild(svgEl("rect", { x, y, width: 165, height: 72, rx: 6, fill: "#fff", stroke: "#d6dce5" }));
-  svg.appendChild(svgEl("circle", { cx: x + 22, cy: y + 24, r: 13, fill: "#9bd4a2", stroke: "#3d7f49", "stroke-width": 2 }));
+  svg.appendChild(svgEl("rect", { x, y, width: 188, height: 86, rx: 6, fill: "#fff", stroke: "#d6dce5" }));
+  svg.appendChild(svgEl("path", { d: holderPath(x + 18, y + 24, 13), fill: "#9bd4a2", stroke: "#3d7f49", "stroke-width": 2 }));
+  svg.appendChild(svgEl("path", { d: holderPath(x + 42, y + 24, 13), fill: "#f7e65f", stroke: "#a88c15", "stroke-width": 2 }));
   let text = svgEl("text", { x: x + 44, y: y + 29, class: "legend-label" });
+  text.setAttribute("x", x + 66);
   text.textContent = "blocked EEG";
   svg.appendChild(text);
-  svg.appendChild(svgEl("circle", { cx: x + 22, cy: y + 52, r: 13, fill: "#fff", stroke: "#667085", "stroke-width": 2, "stroke-dasharray": "6 4" }));
-  text = svgEl("text", { x: x + 44, y: y + 57, class: "legend-label" });
+  svg.appendChild(svgEl("circle", { cx: x + 30, cy: y + 62, r: 13, fill: "#fff", stroke: "#667085", "stroke-width": 2, "stroke-dasharray": "6 4" }));
+  text = svgEl("text", { x: x + 66, y: y + 67, class: "legend-label" });
   text.textContent = "open Soterix";
   svg.appendChild(text);
 }
@@ -626,7 +636,6 @@ function renderMap(candidate) {
   svg.replaceChildren();
   svg.setAttribute("viewBox", `0 0 ${mapper.width} ${mapper.height}`);
 
-  renderGrid(mapper);
   renderHeadGuide(mapper);
 
   if (candidate?.originalHull?.length) {
@@ -667,11 +676,13 @@ function renderMap(candidate) {
       g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 16} A 16 16 0 0 0 ${cx} ${cy + 16} L ${cx} ${cy} Z`, fill: "#20b15a", stroke: "#172033", "stroke-width": 1.4 }));
       g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 16} A 16 16 0 0 1 ${cx} ${cy + 16} L ${cx} ${cy} Z`, fill: "#8d4be8", stroke: "#172033", "stroke-width": 1.4 }));
     } else if (inOriginal) {
-      g.appendChild(svgEl("circle", { cx, cy, r: 16, fill: "#20b15a", stroke: "#166534", "stroke-width": 2 }));
+      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 17), fill: "#20b15a", stroke: "#166534", "stroke-width": 2.2 }));
     } else if (inCandidate) {
-      g.appendChild(svgEl("circle", { cx, cy, r: 16, fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2 }));
+      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 17), fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2.2 }));
     } else if (row.status === "blocked") {
-      g.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "#9bd4a2", stroke: "#3d7f49", "stroke-width": 2 }));
+      const fill = GREEN_EEG_LABELS.has(row.label) ? "#9bd4a2" : "#f7e65f";
+      const stroke = GREEN_EEG_LABELS.has(row.label) ? "#3d7f49" : "#a88c15";
+      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 15), fill, stroke, "stroke-width": 2 }));
     } else {
       g.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "#fff", stroke: "#667085", "stroke-width": 2, "stroke-dasharray": "6 4" }));
     }
