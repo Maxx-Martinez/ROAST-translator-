@@ -39,11 +39,11 @@ rerun ROAST and review the electric field before using the montage.
 Create a CSV with one row per cap site:
 
 ```csv
-label,x,y,z,status
-F3,-50.2438,53.1112,42.1920,blocked
-F4,51.8362,54.3048,40.8140,blocked
-FCC3h,-51.0509,7.1772,74.3770,open
-FCC4h,51.8851,7.7978,73.5070,open
+label,x,y,z,map_x,map_y,status
+F3,-50.2438,53.1112,42.1920,-1.6,2.8,blocked
+F4,51.8362,54.3048,40.8140,1.6,2.8,blocked
+FCC3h,-51.0509,7.1772,74.3770,-1.3,1.0,open
+FCC4h,51.8851,7.7978,73.5070,1.3,1.0,open
 ```
 
 `status` can be:
@@ -55,7 +55,8 @@ The x/y coordinates should be internally consistent. The included
 EasyCap/Soterix map uses the workbook's Realistic Head Model x/y coordinates,
 preserving the current open/blocked stimulation-site labels. The optional `z`
 column enables 3D distance, pairwise-distance, pairwise-angle, and center-shift
-scoring while keeping the cap map readable as a 2D projection.
+scoring. Optional `map_x` and `map_y` columns are display-only coordinates used
+to make the interactive cap map mirror the EasyCap PDF layout more closely.
 
 ## Usage
 

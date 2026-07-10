@@ -58,13 +58,15 @@ function parseCsv(text) {
       x: Number(row.x),
       y: Number(row.y),
       z: row.z === undefined || row.z === "" ? 0 : Number(row.z),
+      mapX: row.map_x === undefined || row.map_x === "" ? Number(row.x) : Number(row.map_x),
+      mapY: row.map_y === undefined || row.map_y === "" ? Number(row.y) : Number(row.map_y),
       status: row.status.trim().toLowerCase(),
     };
   });
 }
 
 async function loadCoordinates() {
-  const response = await fetch("data/easycap_cac64_soterix_draft.csv?v=20260709-v5-geometry-modes");
+  const response = await fetch("data/easycap_cac64_soterix_draft.csv?v=20260710-v6-display-map");
   if (!response.ok) throw new Error("Could not load coordinate CSV.");
   capRows = parseCsv(await response.text());
   rowByLabel = new Map(capRows.map((row) => [row.label, row]));
@@ -545,8 +547,8 @@ function fillFromMap(label) {
 }
 
 function scaleMapper() {
-  const xs = capRows.map((row) => row.x);
-  const ys = capRows.map((row) => row.y);
+  const xs = capRows.map((row) => row.mapX);
+  const ys = capRows.map((row) => row.mapY);
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = Math.min(...ys);
@@ -689,8 +691,8 @@ function renderMap(candidate) {
   renderHeadGuide(mapper);
 
   for (const row of capRows) {
-    const cx = mapper.x(row.x);
-    const cy = mapper.y(row.y);
+    const cx = mapper.x(row.mapX);
+    const cy = mapper.y(row.mapY);
     const inOriginal = originalSet.has(row.label);
     const inCandidate = candidateSet.has(row.label);
     const g = svgEl("g", { class: "cap-site", "data-label": row.label });

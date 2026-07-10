@@ -23,8 +23,10 @@ def main() -> None:
     output_path = Path(sys.argv[2])
     rows = load_rows(input_path)
 
-    xs = [float(row["x"]) for row in rows]
-    ys = [float(row["y"]) for row in rows]
+    x_key = "map_x" if "map_x" in rows[0] else "x"
+    y_key = "map_y" if "map_y" in rows[0] else "y"
+    xs = [float(row[x_key]) for row in rows]
+    ys = [float(row[y_key]) for row in rows]
     min_x, max_x = min(xs), max(xs)
     min_y, max_y = min(ys), max(ys)
 
@@ -43,8 +45,8 @@ def main() -> None:
     ]
 
     for row in rows:
-        x = sx(float(row["x"]))
-        y = sy(float(row["y"]))
+        x = sx(float(row[x_key]))
+        y = sy(float(row[y_key]))
         label = row["label"]
         status = row["status"].lower()
         if status == "open":
