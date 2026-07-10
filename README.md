@@ -3,16 +3,24 @@
 This project is a geometry-based electrode-placement optimizer for an EEG and
 stimulation cap layout. It represents an EasyCap / actiCAP-style 64-channel EEG
 cap with Soterix-compatible open stimulation locations, visualizes the layout,
-and ranks stimulation placement options using the current 2D cap-map geometry.
+and ranks stimulation placement options using physical 2D or 3D coordinates.
 
-The tool treats the cap as a 2D map. It keeps any ROAST locations that are
-already usable, replaces only blocked locations, and ranks replacements by how
-well they preserve:
+The interactive cap map is a display schematic. The calculations can use either
+the workbook's physical x/y coordinates or physical x/y/z coordinates. The tool
+keeps any ROAST locations that are already usable, replaces only blocked
+locations, and lets each original site carry a current value that its replacement
+inherits. Replacement sets must keep currents balanced to 0 mA and stay within
+the configured maximum current and maximum displacement limits.
 
-- closeness to each original ROAST site
-- pairwise distances between stimulation electrodes
+It ranks replacements by how well they preserve:
+
+- current-weighted closeness to each original ROAST site
+- maximum single-electrode displacement
+- current-weighted pairwise distances between stimulation electrodes
 - pairwise angles between stimulation electrodes
-- the overall center of the montage
+- positive and negative current centers
+- the polarity/current-flow vector
+- schematic region and footprint overlap
 - unique, non-blocked stimulation sites
 
 It is intended as a decision-support tool. After choosing a candidate montage,
@@ -51,12 +59,11 @@ FCC4h,51.8851,7.7978,73.5070,1.3,1.0,open
 - `open` - valid stimulation location
 - `blocked` - occupied by EEG or otherwise unavailable
 
-The x/y coordinates should be internally consistent. The included
-EasyCap/Soterix map uses the workbook's Realistic Head Model x/y coordinates,
-preserving the current open/blocked stimulation-site labels. The optional `z`
-column enables 3D distance, pairwise-distance, pairwise-angle, and center-shift
-scoring. Optional `map_x` and `map_y` columns are display-only coordinates used
-to make the interactive cap map mirror the EasyCap PDF layout more closely.
+The physical `x`, `y`, and optional `z` coordinates should be internally
+consistent. In the website, 2D mode uses physical `x/y` for all scoring and 3D
+mode uses physical `x/y/z` for all scoring. Optional `map_x` and `map_y` columns
+are display-only coordinates used to make the interactive cap map mirror the
+EasyCap PDF layout more closely.
 
 ## Usage
 

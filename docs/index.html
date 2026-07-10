@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ROAST Translator</title>
-    <link rel="stylesheet" href="styles.css?v=20260710-v6-display-map" />
+    <link rel="stylesheet" href="styles.css?v=20260710-v7-current-aware" />
   </head>
   <body>
     <main class="app-shell">
@@ -24,6 +24,7 @@
               <button id="selectOriginalButton" class="mode-button active" type="button">Click map for original</button>
             </div>
             <div id="originalInputs" class="select-grid"></div>
+            <div id="currentInputs" class="current-grid"></div>
           </section>
 
           <section class="panel">
@@ -57,6 +58,14 @@
             <label class="field">
               <span>Minimum region coverage</span>
               <input id="minimumCoverage" type="number" min="0" max="100" value="85" />
+            </label>
+            <label class="field">
+              <span>Maximum current per electrode (mA)</span>
+              <input id="maxCurrent" type="number" min="0.1" max="10" step="0.1" value="2" />
+            </label>
+            <label class="field">
+              <span>Maximum displacement</span>
+              <input id="maxDisplacement" type="number" min="1" max="200" step="1" value="75" />
             </label>
             <label class="check-field">
               <input id="requireCoverage" type="checkbox" checked />
@@ -102,7 +111,7 @@
                   <tr>
                     <th>Rank</th>
                     <th>Score</th>
-                    <th>Region</th>
+                    <th>Max move</th>
                     <th>Candidate</th>
                     <th>Replacements</th>
                   </tr>
@@ -124,6 +133,6 @@
       </div>
     </div>
 
-    <script src="app.js?v=20260710-v6-display-map"></script>
+    <script src="app.js?v=20260710-v7-current-aware"></script>
   </body>
 </html>

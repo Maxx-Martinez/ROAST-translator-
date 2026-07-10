@@ -1,24 +1,30 @@
 const DEFAULT_ORIGINAL = ["CP4", "P2", "P6", "PO8", "O2"];
 const DEFAULT_MANUAL = ["POO2", "POO10h", "TPP8h", "CCP6h", "PPO2h"];
+const DEFAULT_CURRENTS = [2, -0.5, -0.5, -0.5, -0.5];
+const CURRENT_BALANCE_TOLERANCE = 1e-6;
 
 const IMPORTANCE = [
-  ["distance", "Distance"],
+  ["weightedDistance", "Weighted movement"],
+  ["maxDistance", "Max movement"],
   ["pairwiseDistance", "Pairwise distance"],
   ["pairwiseAngle", "Pairwise angle"],
+  ["polarityCenter", "Polarity centers"],
+  ["polarityVector", "Polarity vector"],
   ["regionCoverage", "Region coverage"],
   ["footprintCoverage", "Footprint overlap"],
   ["newArea", "New area"],
-  ["centerShift", "Center shift"],
 ];
 
 const DEFAULT_IMPORTANCE = {
-  distance: 6,
-  pairwiseDistance: 5,
-  pairwiseAngle: 4,
-  regionCoverage: 10,
-  footprintCoverage: 2,
-  newArea: 2,
-  centerShift: 2,
+  weightedDistance: 8,
+  maxDistance: 7,
+  pairwiseDistance: 4,
+  pairwiseAngle: 2,
+  polarityCenter: 6,
+  polarityVector: 5,
+  regionCoverage: 2,
+  footprintCoverage: 1,
+  newArea: 1,
 };
 
 const GREEN_EEG_LABELS = new Set([
@@ -66,7 +72,7 @@ function parseCsv(text) {
 }
 
 async function loadCoordinates() {
-  const response = await fetch("data/easycap_cac64_soterix_draft.csv?v=20260710-v6-display-map");
+  const response = await fetch("data/easycap_cac64_soterix_draft.csv?v=20260710-v7-current-aware");
   if (!response.ok) throw new Error("Could not load coordinate CSV.");
   capRows = parseCsv(await response.text());
   rowByLabel = new Map(capRows.map((row) => [row.label, row]));
@@ -144,6 +150,102 @@ function mean(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function weightedMean(values, weights) {
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+  if (!totalWeight) return mean(values);
+  return values.reduce((sum, value, index) => sum + value * weights[index], 0) / totalWeight;
+}
+
+function rms(values) {
+  return Math.sqrt(values.reduce((sum, value) => sum + value ** 2, 0) / values.length);
+}
+
+function currentBalance(currents) {
+  return currents.reduce((sum, current) => sum + current, 0);
+}
+
+function validateCurrents(currents) {
+  if (currents.length !== 5 || currents.some((current) => !Number.isFinite(current))) {
+    throw new Error("Please enter exactly 5 numeric current values.");
+  }
+  const maxCurrent = Number(document.getElementById("maxCurrent").value);
+  if (!Number.isFinite(maxCurrent) || maxCurrent <= 0) {
+    throw new Error("Please enter a positive maximum current.");
+  }
+  const balance = currentBalance(currents);
+  if (Math.abs(balance) > CURRENT_BALANCE_TOLERANCE) {
+    throw new Error(`Currents must balance to 0 mA. Current sum is ${balance.toFixed(4)} mA.`);
+  }
+  const overLimit = currents.find((current) => Math.abs(current) > maxCurrent);
+  if (overLimit !== undefined) {
+    throw new Error(`Current ${overLimit.toFixed(3)} mA exceeds the ${maxCurrent.toFixed(3)} mA limit.`);
+  }
+  if (!currents.some((current) => current > 0) || !currents.some((current) => current < 0)) {
+    throw new Error("Montage must include at least one positive and one negative current.");
+  }
+}
+
+function currentWeightedCenter(points, currents, sign, geometry) {
+  const selected = points
+    .map((point, index) => ({ point, current: currents[index] }))
+    .filter((item) => (sign > 0 ? item.current > 0 : item.current < 0));
+  const total = selected.reduce((sum, item) => sum + Math.abs(item.current), 0);
+  const result = {
+    x: selected.reduce((sum, item) => sum + item.point.x * Math.abs(item.current), 0) / total,
+    y: selected.reduce((sum, item) => sum + item.point.y * Math.abs(item.current), 0) / total,
+  };
+  if (geometry === "3d") {
+    result.z = selected.reduce((sum, item) => sum + (item.point.z || 0) * Math.abs(item.current), 0) / total;
+  }
+  return result;
+}
+
+function vectorBetween(a, b, geometry) {
+  const vector = { x: a.x - b.x, y: a.y - b.y };
+  if (geometry === "3d") vector.z = (a.z || 0) - (b.z || 0);
+  return vector;
+}
+
+function vectorLength(vector, geometry) {
+  return geometry === "3d" ? Math.hypot(vector.x, vector.y, vector.z || 0) : Math.hypot(vector.x, vector.y);
+}
+
+function vectorAngleChange(a, b, geometry) {
+  const aLength = vectorLength(a, geometry);
+  const bLength = vectorLength(b, geometry);
+  if (!aLength || !bLength) return 0;
+  const dot = geometry === "3d"
+    ? a.x * b.x + a.y * b.y + (a.z || 0) * (b.z || 0)
+    : a.x * b.x + a.y * b.y;
+  return (Math.acos(Math.max(-1, Math.min(1, dot / (aLength * bLength)))) * 180) / Math.PI;
+}
+
+function midpoint(a, b, geometry) {
+  const point = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  if (geometry === "3d") point.z = ((a.z || 0) + (b.z || 0)) / 2;
+  return point;
+}
+
+function polarityMetrics(original, candidate, currents, geometry) {
+  const originalPositive = currentWeightedCenter(original, currents, 1, geometry);
+  const originalNegative = currentWeightedCenter(original, currents, -1, geometry);
+  const candidatePositive = currentWeightedCenter(candidate, currents, 1, geometry);
+  const candidateNegative = currentWeightedCenter(candidate, currents, -1, geometry);
+  const originalVector = vectorBetween(originalPositive, originalNegative, geometry);
+  const candidateVector = vectorBetween(candidatePositive, candidateNegative, geometry);
+  return {
+    positiveCenterShift: distanceForGeometry(originalPositive, candidatePositive, geometry),
+    negativeCenterShift: distanceForGeometry(originalNegative, candidateNegative, geometry),
+    centerMeanShift: mean([
+      distanceForGeometry(originalPositive, candidatePositive, geometry),
+      distanceForGeometry(originalNegative, candidateNegative, geometry),
+    ]),
+    vectorAngleChange: vectorAngleChange(originalVector, candidateVector, geometry),
+    vectorLengthChange: Math.abs(vectorLength(originalVector, geometry) - vectorLength(candidateVector, geometry)),
+    vectorMidpointShift: distanceForGeometry(midpoint(originalPositive, originalNegative, geometry), midpoint(candidatePositive, candidateNegative, geometry), geometry),
+  };
+}
+
 function pairwiseDistanceChange(original, candidate, geometry) {
   const changes = [];
   for (let i = 0; i < original.length; i += 1) {
@@ -152,6 +254,28 @@ function pairwiseDistanceChange(original, candidate, geometry) {
     }
   }
   return mean(changes);
+}
+
+function pairwiseDistanceMetrics(original, candidate, currents, geometry) {
+  const absoluteChanges = [];
+  const relativeChanges = [];
+  const weights = [];
+  for (let i = 0; i < original.length; i += 1) {
+    for (let j = i + 1; j < original.length; j += 1) {
+      const originalDistance = distanceForGeometry(original[i], original[j], geometry);
+      const candidateDistance = distanceForGeometry(candidate[i], candidate[j], geometry);
+      const absoluteChange = Math.abs(originalDistance - candidateDistance);
+      absoluteChanges.push(absoluteChange);
+      relativeChanges.push(originalDistance ? absoluteChange / originalDistance : 0);
+      weights.push(Math.abs(currents[i] * currents[j]) || 1);
+    }
+  }
+  return {
+    meanAbsolute: mean(absoluteChanges),
+    weightedRelative: weightedMean(relativeChanges, weights),
+    rmsRelative: rms(relativeChanges),
+    maxRelative: Math.max(...relativeChanges),
+  };
 }
 
 function pairwiseAngleChange(original, candidate, geometry) {
@@ -305,41 +429,69 @@ function importanceWeights() {
   return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value / total]));
 }
 
-function scoreMontage(originalLabels, candidateLabels, weights, radius) {
+function scoreMontage(originalLabels, candidateLabels, weights, radius, currents, options = {}) {
   if (originalLabels.length !== 5 || candidateLabels.length !== 5 || originalLabels.some((label) => !label) || candidateLabels.some((label) => !label)) {
     throw new Error("Please enter exactly 5 electrode labels.");
   }
+  validateCurrents(currents);
   originalLabels.forEach(getPoint);
   candidateLabels.forEach(getPoint);
   const geometry = calculationGeometry();
+  const maxDisplacement = Number(document.getElementById("maxDisplacement").value);
+  if (!Number.isFinite(maxDisplacement) || maxDisplacement <= 0) {
+    throw new Error("Please enter a positive maximum displacement.");
+  }
   const original = originalLabels.map(getPoint);
   const candidate = candidateLabels.map(getPoint);
   const paired = pairedDistances(original, candidate, geometry);
+  const currentWeights = currents.map((current) => Math.abs(current));
   const region = regionMetrics(original, candidate);
   const footprint = footprintMetrics(original, candidate, radius);
-  const shift = distanceForGeometry(center(original, geometry), center(candidate, geometry), geometry);
   const meanDistance = mean(paired);
-  const pairDistance = pairwiseDistanceChange(original, candidate, geometry);
+  const weightedDistance = weightedMean(paired, currentWeights);
+  const rmsDistance = rms(paired);
+  const maxDistance = Math.max(...paired);
+  if (options.enforceMax !== false && maxDistance > maxDisplacement) {
+    throw new Error(`Replacement exceeds the ${maxDisplacement.toFixed(1)} maximum displacement.`);
+  }
+  const pairMetrics = pairwiseDistanceMetrics(original, candidate, currents, geometry);
   const pairAngle = pairwiseAngleChange(original, candidate, geometry);
+  const polarity = polarityMetrics(original, candidate, currents, geometry);
   const scale = geometryScale(geometry);
   const score =
-    weights.distance * Math.min(meanDistance / scale, 1) +
-    weights.pairwiseDistance * Math.min(pairDistance / scale, 1) +
+    weights.weightedDistance * Math.min(weightedDistance / scale, 1) +
+    weights.maxDistance * Math.min(maxDistance / maxDisplacement, 1) +
+    weights.pairwiseDistance * Math.min(pairMetrics.weightedRelative, 1) +
     weights.pairwiseAngle * Math.min(pairAngle / 90, 1) +
+    weights.polarityCenter * Math.min(polarity.centerMeanShift / scale, 1) +
+    weights.polarityVector * Math.min((polarity.vectorMidpointShift / scale) + (polarity.vectorLengthChange / scale) + (polarity.vectorAngleChange / 90), 1) +
     weights.regionCoverage * ((100 - region.percentOriginalRegionCovered) / 100) +
     weights.footprintCoverage * ((100 - footprint.percentOriginalAreaCovered) / 100) +
-    weights.newArea * (footprint.percentCandidateAreaNew / 100) +
-    weights.centerShift * Math.min(shift / scale, 1);
+    weights.newArea * (footprint.percentCandidateAreaNew / 100);
 
   return {
     candidateLabels,
     candidateMontage: candidateLabels.join(", "),
     calculationGeometry: geometry.toUpperCase(),
     finalScore: score,
+    currents,
+    currentBalance: currentBalance(currents),
     meanDistance,
-    pairDistance,
+    weightedDistance,
+    rmsDistance,
+    maxDistance,
+    maxDisplacement,
+    pairDistance: pairMetrics.meanAbsolute,
+    weightedPairwiseRelative: pairMetrics.weightedRelative,
+    rmsPairwiseRelative: pairMetrics.rmsRelative,
+    maxPairwiseRelative: pairMetrics.maxRelative,
     pairAngle,
-    centerShift: shift,
+    positiveCenterShift: polarity.positiveCenterShift,
+    negativeCenterShift: polarity.negativeCenterShift,
+    polarityCenterShift: polarity.centerMeanShift,
+    polarityVectorAngle: polarity.vectorAngleChange,
+    polarityVectorLengthChange: polarity.vectorLengthChange,
+    polarityVectorMidpointShift: polarity.vectorMidpointShift,
     percentOriginalRegionCovered: region.percentOriginalRegionCovered,
     percentCandidateRegionNew: region.percentCandidateRegionNew,
     percentOriginalAreaCovered: footprint.percentOriginalAreaCovered,
@@ -366,12 +518,14 @@ function cartesianProduct(arrays) {
 
 function suggestReplacements() {
   const originalLabels = readInputs("original");
+  const currents = readCurrents();
   const topN = Number(document.getElementById("topN").value);
   const poolSize = Number(document.getElementById("poolSize").value);
   const radius = Number(document.getElementById("electrodeRadius").value);
   const minimumCoverage = Number(document.getElementById("minimumCoverage").value);
   const requireCoverage = document.getElementById("requireCoverage").checked;
   const weights = importanceWeights();
+  validateCurrents(currents);
 
   const fixed = [];
   const blocked = [];
@@ -397,9 +551,10 @@ function suggestReplacements() {
       candidate[blocked[index].index] = replacement;
     });
     if (new Set(candidate).size !== candidate.length) continue;
-    const score = scoreMontage(originalLabels, candidate, weights, radius);
+    const score = scoreMontage(originalLabels, candidate, weights, radius, currents, { enforceMax: false });
+    if (score.maxDistance > score.maxDisplacement) continue;
     if (requireCoverage && score.percentOriginalRegionCovered < minimumCoverage) continue;
-    score.replacements = blocked.map((item, index) => `${item.label}->${replacements[index]}`).join("; ") || "none";
+    score.replacements = blocked.map((item, index) => `${item.label} (${currents[item.index]} mA)->${replacements[index]}`).join("; ") || "none";
     score.keptOriginals = kept.join(", ") || "none";
     rows.push(score);
   }
@@ -417,18 +572,19 @@ function suggestReplacements() {
 function scoreManual() {
   const originalLabels = readInputs("original");
   const manualLabels = readInputs("manual");
+  const currents = readCurrents();
   const weights = importanceWeights();
   const radius = Number(document.getElementById("electrodeRadius").value);
-  const score = scoreMontage(originalLabels, manualLabels, weights, radius);
-  score.replacements = originalLabels.map((label, index) => (label === manualLabels[index] ? null : `${label}->${manualLabels[index]}`)).filter(Boolean).join("; ") || "none";
+  const score = scoreMontage(originalLabels, manualLabels, weights, radius, currents);
+  score.replacements = originalLabels.map((label, index) => (label === manualLabels[index] ? null : `${label} (${currents[index]} mA)->${manualLabels[index]}`)).filter(Boolean).join("; ") || "none";
   score.keptOriginals = originalLabels.filter((label, index) => label === manualLabels[index]).join(", ") || "none";
   selectedCandidate = score;
   renderMap(score);
   renderMetricDetails(score);
   document.getElementById("manualScore").innerHTML = `
     <strong>Manual score:</strong> ${score.finalScore.toFixed(3)}<br>
-    Region coverage: ${score.percentOriginalRegionCovered.toFixed(1)}%<br>
-    Footprint overlap: ${score.percentOriginalAreaCovered.toFixed(1)}%
+    Weighted movement: ${score.weightedDistance.toFixed(2)}<br>
+    Max movement: ${score.maxDistance.toFixed(2)}
   `;
 }
 
@@ -464,6 +620,10 @@ function readInputs(prefix) {
   return Array.from(document.querySelectorAll(`[data-input-group="${prefix}"]`)).map((input) => normalizeLabel(input.value));
 }
 
+function readCurrents() {
+  return Array.from(document.querySelectorAll("[data-current-index]")).map((input) => Number(input.value));
+}
+
 function normalizeLabel(value) {
   const trimmed = value.trim();
   if (!trimmed) return "";
@@ -493,10 +653,23 @@ function makeSiteInput(group, value, index) {
   return input;
 }
 
+function makeCurrentInput(value, index) {
+  const label = document.createElement("label");
+  label.className = "current-field";
+  label.innerHTML = `
+    <span>Slot ${index + 1} current</span>
+    <input type="number" data-current-index="${index}" min="-10" max="10" step="0.1" value="${value}">
+  `;
+  label.querySelector("input").addEventListener("input", () => renderMap(selectedCandidate));
+  return label;
+}
+
 function initControls() {
   const originalInputs = document.getElementById("originalInputs");
+  const currentInputs = document.getElementById("currentInputs");
   const manualInputs = document.getElementById("manualInputs");
   DEFAULT_ORIGINAL.forEach((label, index) => originalInputs.appendChild(makeSiteInput("original", label, index)));
+  DEFAULT_CURRENTS.forEach((current, index) => currentInputs.appendChild(makeCurrentInput(current, index)));
   DEFAULT_MANUAL.forEach((label, index) => manualInputs.appendChild(makeSiteInput("manual", label, index)));
   document.getElementById("selectOriginalButton").addEventListener("click", () => setActiveEntryGroup("original"));
   document.getElementById("selectManualButton").addEventListener("click", () => setActiveEntryGroup("manual"));
@@ -670,14 +843,25 @@ function renderMetricDetails(candidate) {
   const metrics = [
     ["Final score", candidate.finalScore.toFixed(3)],
     ["Calculation geometry", candidate.calculationGeometry],
+    ["Current balance", `${candidate.currentBalance.toFixed(4)} mA`],
+    ["Weighted movement", candidate.weightedDistance.toFixed(3)],
+    ["Mean movement", candidate.meanDistance.toFixed(3)],
+    ["RMS movement", candidate.rmsDistance.toFixed(3)],
+    ["Max movement", `${candidate.maxDistance.toFixed(3)} / ${candidate.maxDisplacement.toFixed(1)}`],
+    ["Weighted pairwise error", `${(candidate.weightedPairwiseRelative * 100).toFixed(1)}%`],
+    ["RMS pairwise error", `${(candidate.rmsPairwiseRelative * 100).toFixed(1)}%`],
+    ["Max pairwise error", `${(candidate.maxPairwiseRelative * 100).toFixed(1)}%`],
+    ["Pairwise angle change", `${candidate.pairAngle.toFixed(1)}°`],
+    ["Positive center shift", candidate.positiveCenterShift.toFixed(3)],
+    ["Negative center shift", candidate.negativeCenterShift.toFixed(3)],
+    ["Polarity center shift", candidate.polarityCenterShift.toFixed(3)],
+    ["Polarity vector angle", `${candidate.polarityVectorAngle.toFixed(1)}°`],
+    ["Polarity vector length", candidate.polarityVectorLengthChange.toFixed(3)],
+    ["Polarity midpoint shift", candidate.polarityVectorMidpointShift.toFixed(3)],
     ["Original region covered", `${candidate.percentOriginalRegionCovered.toFixed(1)}%`],
     ["Candidate region new", `${candidate.percentCandidateRegionNew.toFixed(1)}%`],
     ["Footprint overlap", `${candidate.percentOriginalAreaCovered.toFixed(1)}%`],
     ["Candidate footprint new", `${candidate.percentCandidateAreaNew.toFixed(1)}%`],
-    ["Mean movement", candidate.meanDistance.toFixed(3)],
-    ["Pairwise distance change", candidate.pairDistance.toFixed(3)],
-    ["Pairwise angle change", `${candidate.pairAngle.toFixed(1)}°`],
-    ["Center shift", candidate.centerShift.toFixed(3)],
     ["Kept originals", candidate.keptOriginals || "none"],
     ["Replacements", candidate.replacements || "none"],
   ];
@@ -772,7 +956,7 @@ function renderMap(candidate) {
   renderLegend(mapper);
 
   if (candidate) {
-    document.getElementById("selectedSummary").textContent = `${candidate.candidateMontage} | ${candidate.calculationGeometry} calc | region ${candidate.percentOriginalRegionCovered.toFixed(1)}% | score ${candidate.finalScore.toFixed(3)}`;
+    document.getElementById("selectedSummary").textContent = `${candidate.candidateMontage} | ${candidate.calculationGeometry} calc | max move ${candidate.maxDistance.toFixed(1)} | score ${candidate.finalScore.toFixed(3)}`;
   } else {
     document.getElementById("selectedSummary").textContent = "Click the map to fill montage slots, or run suggestions to view a candidate.";
   }
@@ -786,7 +970,7 @@ function renderResults() {
     tr.innerHTML = `
       <td>${index + 1}</td>
       <td>${row.finalScore.toFixed(3)}</td>
-      <td>${row.percentOriginalRegionCovered.toFixed(1)}%</td>
+      <td>${row.maxDistance.toFixed(1)}</td>
       <td>${row.candidateMontage}</td>
       <td>${row.replacements}</td>
     `;

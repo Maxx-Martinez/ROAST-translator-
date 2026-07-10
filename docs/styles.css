@@ -101,6 +101,25 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.current-grid {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.current-field {
+  display: grid;
+  gap: 4px;
+}
+
+.current-field span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 input[type="number"],
 .site-input {
   background: #fff;
