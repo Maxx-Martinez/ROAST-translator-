@@ -590,6 +590,17 @@ function svgEl(name, attrs = {}) {
   return el;
 }
 
+function polygonPoints(points, mapper) {
+  return points.map((point) => `${mapper.x(point.x)},${mapper.y(point.y)}`).join(" ");
+}
+
+function displayPointsForLabels(labels) {
+  return labels
+    .map((label) => rowByLabel.get(label))
+    .filter(Boolean)
+    .map((row) => ({ x: row.mapX, y: row.mapY }));
+}
+
 function holderPath(cx, cy, radius) {
   const top = cy - radius * 0.85;
   const sideTop = cy - radius * 0.1;
@@ -690,6 +701,28 @@ function renderMap(candidate) {
 
   renderHeadGuide(mapper);
 
+  if (candidateLabels.length) {
+    const originalHull = convexHull(displayPointsForLabels(originalLabels));
+    const candidateHull = convexHull(displayPointsForLabels(candidateLabels));
+    if (originalHull.length >= 3) {
+      svg.appendChild(svgEl("polygon", {
+        points: polygonPoints(originalHull, mapper),
+        fill: "rgba(32,177,90,0.10)",
+        stroke: "#20b15a",
+        "stroke-width": 2,
+        "stroke-dasharray": "6 4",
+      }));
+    }
+    if (candidateHull.length >= 3) {
+      svg.appendChild(svgEl("polygon", {
+        points: polygonPoints(candidateHull, mapper),
+        fill: "rgba(141,75,232,0.14)",
+        stroke: "#8d4be8",
+        "stroke-width": 2.2,
+      }));
+    }
+  }
+
   for (const row of capRows) {
     const cx = mapper.x(row.mapX);
     const cy = mapper.y(row.mapY);
@@ -709,18 +742,18 @@ function renderMap(candidate) {
     });
 
     if (inOriginal && inCandidate) {
-      g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 16} A 16 16 0 0 0 ${cx} ${cy + 16} L ${cx} ${cy} Z`, fill: "#20b15a", stroke: "#172033", "stroke-width": 1.4 }));
-      g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 16} A 16 16 0 0 1 ${cx} ${cy + 16} L ${cx} ${cy} Z`, fill: "#8d4be8", stroke: "#172033", "stroke-width": 1.4 }));
+      g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 20} A 20 20 0 0 0 ${cx} ${cy + 20} L ${cx} ${cy} Z`, fill: "#20b15a", stroke: "#172033", "stroke-width": 1.6 }));
+      g.appendChild(svgEl("path", { d: `M ${cx} ${cy - 20} A 20 20 0 0 1 ${cx} ${cy + 20} L ${cx} ${cy} Z`, fill: "#8d4be8", stroke: "#172033", "stroke-width": 1.6 }));
     } else if (inOriginal) {
-      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 17), fill: "#20b15a", stroke: "#166534", "stroke-width": 2.2 }));
+      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 21), fill: "#20b15a", stroke: "#166534", "stroke-width": 2.4 }));
     } else if (inCandidate) {
-      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 17), fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2.2 }));
+      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 21), fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2.4 }));
     } else if (row.status === "blocked") {
       const fill = GREEN_EEG_LABELS.has(row.label) ? "#9bd4a2" : "#f7e65f";
       const stroke = GREEN_EEG_LABELS.has(row.label) ? "#3d7f49" : "#a88c15";
-      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 15), fill, stroke, "stroke-width": 2 }));
+      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 18), fill, stroke, "stroke-width": 2.2 }));
     } else {
-      g.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "#fff", stroke: "#667085", "stroke-width": 2, "stroke-dasharray": "6 4" }));
+      g.appendChild(svgEl("circle", { cx, cy, r: 17, fill: "#fff", stroke: "#667085", "stroke-width": 2.2, "stroke-dasharray": "6 4" }));
     }
 
     const text = svgEl("text", {
