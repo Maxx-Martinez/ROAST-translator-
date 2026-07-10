@@ -588,10 +588,6 @@ function svgEl(name, attrs = {}) {
   return el;
 }
 
-function polygonPoints(points, mapper) {
-  return points.map((point) => `${mapper.x(point.x)},${mapper.y(point.y)}`).join(" ");
-}
-
 function holderPath(cx, cy, radius) {
   const top = cy - radius * 0.85;
   const sideTop = cy - radius * 0.1;
@@ -611,7 +607,7 @@ function renderHeadGuide(mapper) {
   const cy = mapper.y(mapper.centerY);
   const outerRx = Math.abs(mapper.x(mapper.centerX + mapper.dataWidth * 0.56) - cx);
   const outerRy = Math.abs(mapper.y(mapper.centerY + mapper.dataHeight * 0.54) - cy);
-  const ringRadii = [0.82, 0.62, 0.42, 0.22];
+  const ringRadii = [0.88, 0.74, 0.58, 0.42, 0.26];
 
   guides.appendChild(svgEl("ellipse", {
     cx,
@@ -691,22 +687,6 @@ function renderMap(candidate) {
   svg.setAttribute("viewBox", `0 0 ${mapper.width} ${mapper.height}`);
 
   renderHeadGuide(mapper);
-
-  if (candidate?.originalHull?.length) {
-    svg.appendChild(svgEl("polygon", {
-      points: polygonPoints(candidate.originalHull, mapper),
-      fill: "rgba(32,177,90,0.10)",
-      stroke: "#20b15a",
-      "stroke-width": 2,
-      "stroke-dasharray": "6 4",
-    }));
-    svg.appendChild(svgEl("polygon", {
-      points: polygonPoints(candidate.candidateHull, mapper),
-      fill: "rgba(141,75,232,0.14)",
-      stroke: "#8d4be8",
-      "stroke-width": 2.2,
-    }));
-  }
 
   for (const row of capRows) {
     const cx = mapper.x(row.x);
