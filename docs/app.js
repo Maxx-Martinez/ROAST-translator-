@@ -967,9 +967,6 @@ function initControls() {
       renderResults();
     });
   });
-  document.getElementById("coordinateSource").textContent = COORDINATE_SOURCE;
-  document.getElementById("coordinateUnits").textContent = COORDINATE_UNITS;
-  renderCoordinateValidation();
   updateSearchSummary();
 }
 
@@ -981,42 +978,6 @@ function setImportanceValues(values) {
     input.value = value;
     output.textContent = value;
   }
-}
-
-function renderCoordinateValidation() {
-  const panel = document.getElementById("coordinateValidation");
-  if (!panel) return;
-  const metadata = coordinateMetadata || {
-    source_file: COORDINATE_SOURCE,
-    units: "Unverified",
-    origin: "Unverified",
-    axis_orientation: "Unverified",
-    verified: false,
-    notes: "Coordinate metadata is not yet verified. Distances are reported in coordinate units and should not be interpreted as millimeters.",
-  };
-  document.getElementById("coordinateSource").textContent = metadata.source_file || COORDINATE_SOURCE;
-  document.getElementById("coordinateUnits").textContent = metadata.units || "Unverified";
-  const numericClass = capValidation.ok ? "ok" : "warning";
-  panel.className = "validation-panel";
-  panel.innerHTML = `
-    <section class="validation-subpanel ${numericClass}">
-      <strong>Numeric coordinate check</strong>
-      ${capValidation.ok
-        ? "<span>Passed: all selectable sites contain finite x/y/z values.</span>"
-        : `<ul>${capValidation.warnings.map((warning) => `<li>${warning}</li>`).join("")}</ul>`}
-    </section>
-    <section class="validation-subpanel ${metadata.verified ? "ok" : "warning"}">
-      <strong>Coordinate metadata</strong>
-      <dl>
-        <div><dt>Source</dt><dd>${metadata.source_file || COORDINATE_SOURCE}</dd></div>
-        <div><dt>Units</dt><dd>${metadata.units || "Unverified"}</dd></div>
-        <div><dt>Origin</dt><dd>${metadata.origin || "Unverified"}</dd></div>
-        <div><dt>Orientation</dt><dd>${metadata.axis_orientation || "Unverified"}</dd></div>
-        <div><dt>Verified</dt><dd>${metadata.verified ? "Yes" : "No"}</dd></div>
-      </dl>
-      <span>${metadata.notes || "Coordinate metadata is not yet verified. Distances are reported in coordinate units and should not be interpreted as millimeters."}</span>
-    </section>
-  `;
 }
 
 function setActiveEntryGroup(group) {
@@ -1152,7 +1113,7 @@ function renderHeadGuide(mapper) {
 function renderLegend(mapper) {
   const x = mapper.width - 212;
   const y = 52;
-  svg.appendChild(svgEl("rect", { x, y, width: 188, height: 172, rx: 6, fill: "#fff", stroke: "#d6dce5" }));
+  svg.appendChild(svgEl("rect", { x, y, width: 188, height: 142, rx: 6, fill: "#fff", stroke: "#d6dce5" }));
   svg.appendChild(svgEl("path", { d: holderPath(x + 18, y + 24, 13), fill: "#9bd4a2", stroke: "#3d7f49", "stroke-width": 2 }));
   svg.appendChild(svgEl("path", { d: holderPath(x + 42, y + 24, 13), fill: "#f7e65f", stroke: "#a88c15", "stroke-width": 2 }));
   let text = svgEl("text", { x: x + 44, y: y + 29, class: "legend-label" });
@@ -1171,38 +1132,6 @@ function renderLegend(mapper) {
   text = svgEl("text", { x: x + 66, y: y + 127, class: "legend-label" });
   text.textContent = "candidate montage";
   svg.appendChild(text);
-  svg.appendChild(svgEl("path", { d: `M ${x + 18} ${y + 149} L ${x + 44} ${y + 149}`, stroke: "#475467", "stroke-width": 2, "stroke-dasharray": "4 4", "marker-end": "url(#arrowHead)" }));
-  text = svgEl("text", { x: x + 66, y: y + 154, class: "legend-label" });
-  text.textContent = "replacement path";
-  svg.appendChild(text);
-}
-
-function renderArrowDefs() {
-  const defs = svgEl("defs");
-  const marker = svgEl("marker", { id: "arrowHead", markerWidth: 8, markerHeight: 8, refX: 7, refY: 4, orient: "auto", markerUnits: "strokeWidth" });
-  marker.appendChild(svgEl("path", { d: "M 0 0 L 8 4 L 0 8 z", fill: "#475467" }));
-  defs.appendChild(marker);
-  svg.appendChild(defs);
-}
-
-function renderCorrespondenceArrows(candidate, mapper) {
-  if (!candidate?.replacementRows) return;
-  const group = svgEl("g", { class: "correspondence-arrows" });
-  for (const row of candidate.replacementRows) {
-    if (row.original === row.candidate) continue;
-    const original = rowByLabel.get(row.original);
-    const replacement = rowByLabel.get(row.candidate);
-    if (!original || !replacement) continue;
-    group.appendChild(svgEl("line", {
-      x1: mapper.x(original.mapX),
-      y1: mapper.y(original.mapY),
-      x2: mapper.x(replacement.mapX),
-      y2: mapper.y(replacement.mapY),
-      class: "replacement-arrow",
-      "marker-end": "url(#arrowHead)",
-    }));
-  }
-  svg.appendChild(group);
 }
 
 function renderMetricDetails(candidate) {
@@ -1271,12 +1200,12 @@ function renderMetricDetails(candidate) {
 }
 
 function renderContributionBreakdown(candidate) {
-  const section = document.createElement("section");
+  const section = document.createElement("details");
   section.className = "metric-section contribution-section";
   const rows = [...candidate.contributions].sort((a, b) => b.weightedContribution - a.weightedContribution);
   const sum = rows.reduce((total, row) => total + row.weightedContribution, 0);
   section.innerHTML = `
-    <h3>Why this candidate received this score</h3>
+    <summary>Why this candidate received this score</summary>
     <div class="contribution-wrap">
       <table>
         <thead>
@@ -1310,7 +1239,6 @@ function renderMap(candidate) {
   svg.replaceChildren();
   svg.setAttribute("viewBox", `0 0 ${mapper.width} ${mapper.height}`);
 
-  renderArrowDefs();
   renderHeadGuide(mapper);
 
   if (candidateLabels.length) {
@@ -1334,8 +1262,6 @@ function renderMap(candidate) {
       }));
     }
   }
-  renderCorrespondenceArrows(candidate, mapper);
-
   for (const row of capRows) {
     const cx = mapper.x(row.mapX);
     const cy = mapper.y(row.mapY);
@@ -1360,7 +1286,7 @@ function renderMap(candidate) {
     } else if (inOriginal) {
       g.appendChild(svgEl("path", { d: holderPath(cx, cy, 21), fill: "#20b15a", stroke: "#166534", "stroke-width": 2.4 }));
     } else if (inCandidate) {
-      g.appendChild(svgEl("path", { d: holderPath(cx, cy, 21), fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2.4 }));
+      g.appendChild(svgEl("circle", { cx, cy, r: 20, fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2.4 }));
     } else if (row.status === "blocked") {
       const fill = GREEN_EEG_LABELS.has(row.label) ? "#9bd4a2" : "#f7e65f";
       const stroke = GREEN_EEG_LABELS.has(row.label) ? "#3d7f49" : "#a88c15";
@@ -1379,18 +1305,6 @@ function renderMap(candidate) {
     });
     text.textContent = row.label;
     g.appendChild(text);
-    const currentRow = candidate?.replacementRows?.find((item) => item.original === row.label || item.candidate === row.label);
-    if (currentRow && (inOriginal || inCandidate)) {
-      const currentText = svgEl("text", {
-        x: cx,
-        y: cy + 27,
-        "text-anchor": "middle",
-        class: "current-map-label",
-        fill: "#172033",
-      });
-      currentText.textContent = `${currentRow.current > 0 ? "+" : ""}${Number(currentRow.current).toFixed(1)} mA`;
-      g.appendChild(currentText);
-    }
     svg.appendChild(g);
   }
 
@@ -1445,7 +1359,6 @@ async function main() {
         renderMetricDetails(null);
         renderMap(null);
         updateSearchSummary();
-        document.getElementById("coordinateModel").textContent = calculationGeometry() === "3d" ? "3D Cartesian" : "2D cap map";
         statusMessage.textContent = `Ready. Using ${calculationGeometry() === "3d" ? "3D Cartesian" : "2D cap map"} calculations.`;
       });
     });

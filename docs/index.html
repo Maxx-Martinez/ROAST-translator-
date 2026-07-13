@@ -48,18 +48,11 @@
               <summary>Methodology note</summary>
               <p>3D Cartesian uses x, y, z coordinates. Movement and pairwise distance are straight chord distances through space. This version does not yet calculate true geodesic distance along a scalp mesh. 2D is primarily useful for visualization, debugging, and comparison with the cap map.</p>
             </details>
-            <div class="coordinate-summary">
-              <div><span>Coordinate source</span><strong id="coordinateSource">data/easycap_cac64_soterix_draft.csv</strong></div>
-              <div><span>Units</span><strong id="coordinateUnits">Not documented</strong></div>
-              <div><span>Coordinate model</span><strong id="coordinateModel">3D Cartesian</strong></div>
-              <p>Warning: verify all electrode coordinates use the same template, units, origin, and orientation.</p>
-            </div>
             <label class="field">
               <span>Schematic footprint radius</span>
               <input id="electrodeRadius" type="number" min="0.05" max="2" step="0.05" value="0.35" />
               <small>Controls schematic circular overlap on the cap map. It is not a physical scalp-contact or electric-field model.</small>
             </label>
-            <div id="coordinateValidation" class="validation-panel"></div>
           </section>
 
           <section class="panel">
