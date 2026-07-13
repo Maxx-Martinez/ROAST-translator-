@@ -70,6 +70,12 @@ p {
   margin-top: 4px;
 }
 
+.section-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+
 .workspace {
   display: grid;
   gap: 16px;
@@ -417,33 +423,110 @@ input[type="range"] {
 }
 
 .validation-panel {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.validation-subpanel {
   border: 1px solid var(--line);
   border-radius: 6px;
   display: grid;
   gap: 6px;
-  margin-top: 10px;
   padding: 9px;
 }
 
-.validation-panel strong {
+.validation-subpanel strong {
   font-size: 12px;
 }
 
-.validation-panel span,
-.validation-panel li {
+.validation-subpanel span,
+.validation-subpanel li,
+.validation-subpanel dd,
+.validation-subpanel dt {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
 }
 
-.validation-panel.ok {
+.validation-subpanel dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.validation-subpanel div {
+  display: grid;
+  gap: 2px;
+}
+
+.validation-subpanel dd {
+  color: var(--ink);
+  font-weight: 700;
+  margin: 0;
+}
+
+.validation-subpanel.ok {
   background: #f0fdf4;
   border-color: #bbf7d0;
 }
 
-.validation-panel.warning {
+.validation-subpanel.warning {
   background: #fff7ed;
   border-color: #fed7aa;
+}
+
+.status-badge,
+.check-badge {
+  border-radius: 999px;
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  margin-left: 4px;
+  padding: 2px 7px;
+}
+
+.status-badge.pass,
+.check-badge.pass {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge.fail,
+.check-badge.fail {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-badge.muted {
+  background: #edf1f6;
+  color: var(--muted);
+}
+
+.constraint-checklist {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.manual-row {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  padding: 8px;
+}
+
+.manual-row strong,
+.manual-row span,
+.manual-row label {
+  font-size: 12px;
+}
+
+.manual-row label {
+  display: grid;
+  gap: 4px;
 }
 
 .sort-button {
@@ -498,7 +581,7 @@ input[type="range"] {
 .metric-details {
   display: none;
   gap: 8px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 12px;
 }
 
@@ -511,6 +594,30 @@ input[type="range"] {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 8px;
+}
+
+.metric-section {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 10px;
+}
+
+.metric-section h3,
+.metric-section p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.contribution-section {
+  grid-column: 1 / -1;
+}
+
+.contribution-wrap {
+  grid-column: 1 / -1;
+  overflow: auto;
 }
 
 .metric-card span {
@@ -626,25 +733,11 @@ tbody tr.selected {
 }
 
 .progress-bar {
-  animation: load-slide 1.05s ease-in-out infinite;
   background: linear-gradient(90deg, var(--blue), var(--purple));
   border-radius: inherit;
   height: 100%;
-  width: 45%;
-}
-
-@keyframes load-slide {
-  0% {
-    transform: translateX(-115%);
-  }
-
-  50% {
-    transform: translateX(65%);
-  }
-
-  100% {
-    transform: translateX(230%);
-  }
+  transition: width 0.15s ease;
+  width: 0%;
 }
 
 .head-guide {
@@ -672,6 +765,21 @@ tbody tr.selected {
   pointer-events: none;
 }
 
+.current-map-label {
+  font-size: 8.5px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.replacement-arrow {
+  fill: none;
+  opacity: 0.55;
+  stroke: #475467;
+  stroke-dasharray: 5 5;
+  stroke-linecap: round;
+  stroke-width: 1.8;
+}
+
 @media (max-width: 980px) {
   .workspace {
     grid-template-columns: 1fr;
@@ -687,5 +795,54 @@ tbody tr.selected {
 
   .metric-details {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manual-row,
+  .montage-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .toolbar,
+  .controls,
+  .loading-overlay,
+  button {
+    display: none !important;
+  }
+
+  .app-shell {
+    padding: 0;
+  }
+
+  .workspace,
+  .main-stage {
+    display: block;
+  }
+
+  .map-panel,
+  .results-panel {
+    border: 0;
+    break-inside: avoid;
+    padding: 0 0 14px;
+  }
+
+  #capMap {
+    height: 58vh;
+    min-height: 420px;
+  }
+
+  .metric-section,
+  .table-wrap {
+    break-inside: avoid;
+  }
+
+  .table-wrap {
+    max-height: none;
+    overflow: visible;
   }
 }

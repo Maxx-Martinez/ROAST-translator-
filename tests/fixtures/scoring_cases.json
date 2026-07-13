@@ -1,0 +1,20 @@
+{
+  "description": "Shared scoring fixture for JavaScript and future Python parity tests.",
+  "coordinate_units": "Unverified",
+  "capRows": [
+    { "label": "A", "x": 0, "y": 0, "z": 0, "mapX": 0, "mapY": 0, "status": "blocked" },
+    { "label": "B", "x": 10, "y": 0, "z": 0, "mapX": 1, "mapY": 0, "status": "blocked" },
+    { "label": "C", "x": 0, "y": 10, "z": 0, "mapX": 0, "mapY": 1, "status": "blocked" },
+    { "label": "D", "x": 10, "y": 10, "z": 0, "mapX": 1, "mapY": 1, "status": "blocked" },
+    { "label": "E", "x": 5, "y": 5, "z": 5, "mapX": 0.5, "mapY": 0.5, "status": "blocked" },
+    { "label": "OA", "x": 0, "y": 0, "z": 0, "mapX": 0, "mapY": 0, "status": "open" },
+    { "label": "OB", "x": 11, "y": 0, "z": 0, "mapX": 1.1, "mapY": 0, "status": "open" },
+    { "label": "OC", "x": 0, "y": 11, "z": 0, "mapX": 0, "mapY": 1.1, "status": "open" },
+    { "label": "OD", "x": 11, "y": 11, "z": 0, "mapX": 1.1, "mapY": 1.1, "status": "open" },
+    { "label": "OE", "x": 6, "y": 5, "z": 5, "mapX": 0.6, "mapY": 0.5, "status": "open" }
+  ],
+  "originalLabels": ["A", "B", "C", "D", "E"],
+  "candidateLabels": ["OA", "OB", "OC", "OD", "OE"],
+  "currents": [2, -0.5, -0.5, -0.5, -0.5],
+  "tolerance": 1e-9
+}

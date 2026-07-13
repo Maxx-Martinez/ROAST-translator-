@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "test:js": "node --test docs/*.test.js"
+  },
+  "type": "module"
+}

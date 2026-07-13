@@ -5,6 +5,8 @@ stimulation cap layout. It represents an EasyCap / actiCAP-style 64-channel EEG
 cap with Soterix-compatible open stimulation locations, visualizes the layout,
 and ranks stimulation placement options using physical 2D or 3D coordinates.
 
+The current website version evaluates exactly five-electrode montages.
+
 The interactive cap map is a display schematic. The recommended calculation
 mode is 3D Cartesian: it uses straight-line Euclidean distances between physical
 x/y/z electrode coordinates. This is a geometric screening tool, not a claim to
@@ -68,9 +70,42 @@ The 2D cap-map mode uses `map_x` and `map_y` for schematic comparison. Optional
 `map_x` and `map_y` columns are also used to make the interactive cap map mirror
 the EasyCap PDF layout more closely. Coordinate units are not currently
 documented in the CSV, so verify the template, units, origin, and orientation
-before interpreting distances scientifically.
+before interpreting distances scientifically. Region coverage and schematic
+footprint overlap are always calculated on the `map_x`/`map_y` cap-map
+projection so the displayed polygons match the reported spatial-coverage
+metrics.
+
+Hard constraints decide whether a candidate is allowed. Score penalties rank the
+allowed candidates, and lower final score is better. The maximum displacement
+setting is a hard constraint only; movement score normalization uses a fixed
+geometry-derived reference equal to 10% of the active coordinate-space diagonal.
+Automatic search runs in a Web Worker and reports progress while recursively
+generating candidates without materializing the full Cartesian product.
+
+The exact browser scoring formulas are documented in `SCORING_SPEC.md`.
 
 ## Usage
+
+Run the static website locally:
+
+```bash
+cd docs
+python3 -m http.server 8765
+```
+
+Then open `http://127.0.0.1:8765/`.
+
+Run JavaScript tests:
+
+```bash
+node --test docs/*.test.js
+```
+
+Run Python tests:
+
+```bash
+python3 -m unittest discover tests
+```
 
 Rank open Soterix sites and simple anode/cathode pairs near a target:
 

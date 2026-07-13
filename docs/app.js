@@ -1,3 +1,5 @@
+import * as Core from "./scoring-core.js";
+
 const DEFAULT_ORIGINAL = ["CP4", "P2", "P6", "PO8", "O2"];
 const DEFAULT_MANUAL = ["POO2", "POO10h", "TPP8h", "CCP6h", "PPO2h"];
 const DEFAULT_CURRENTS = [2, -0.5, -0.5, -0.5, -0.5];
@@ -21,8 +23,8 @@ const IMPORTANCE = [
   ]],
   ["coverage", "Spatial coverage", [
     ["regionCoverage", "Region coverage", "Measures how much of the original montage region is retained."],
-    ["footprintCoverage", "Footprint overlap", "Measures overlap between circular electrode-contact footprints."],
-    ["newArea", "New area", "Penalizes area covered by the candidate that was not covered originally."],
+    ["footprintCoverage", "Schematic footprint overlap", "Measures overlap between schematic circular footprints on the cap map."],
+    ["newArea", "New montage-region area", "Penalizes candidate montage-region area that falls outside the original montage region."],
   ]],
 ];
 
@@ -51,13 +53,15 @@ const GREEN_EEG_LABELS = new Set([
 let capRows = [];
 let rowByLabel = new Map();
 let selectedCandidate = null;
-let suggestions = [];
+let canonicalSuggestions = [];
+let displayedSuggestions = [];
 let activeEntryGroup = "original";
 let activeSlotIndex = 0;
-let originalSlotCount = 5;
 let capValidation = { ok: true, warnings: [], invalid3dLabels: new Set() };
+let coordinateMetadata = null;
 let sortKey = "finalScore";
 let sortDirection = 1;
+let activeWorker = null;
 
 const svg = document.getElementById("capMap");
 const statusMessage = document.getElementById("statusMessage");
@@ -99,6 +103,12 @@ async function loadCoordinates() {
   capRows = parseCsv(await response.text());
   rowByLabel = new Map(capRows.map((row) => [row.label, row]));
   capValidation = validateCoordinateDataset(capRows);
+  try {
+    const metadataResponse = await fetch("data/coordinate_metadata.json?v=20260713-v9-scoring-core");
+    coordinateMetadata = metadataResponse.ok ? await metadataResponse.json() : null;
+  } catch {
+    coordinateMetadata = null;
+  }
 }
 
 function getPoint(label) {
@@ -532,16 +542,14 @@ function footprintMetrics(original, candidate, radius) {
 
 function importanceWeights() {
   const values = {};
-  let total = 0;
   for (const [, , metrics] of IMPORTANCE) {
     for (const [key] of metrics) {
       const value = Number(document.getElementById(`importance-${key}`).value);
       values[key] = value;
-      total += value;
     }
   }
-  if (!total) throw new Error("At least one importance slider must be greater than 0.");
-  return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value / total]));
+  Core.normalizedWeights(values);
+  return values;
 }
 
 function scoreMontage(originalLabels, candidateLabels, weights, radius, currents, options = {}) {
@@ -557,82 +565,23 @@ function scoreMontage(originalLabels, candidateLabels, weights, radius, currents
   if (!Number.isFinite(maxDisplacement) || maxDisplacement <= 0) {
     throw new Error("Please enter a positive maximum displacement.");
   }
-  const original = originalLabels.map((label) => getScoringPoint(label, geometry));
-  const candidate = candidateLabels.map((label) => getScoringPoint(label, geometry));
-  const paired = pairedDistances(original, candidate, geometry);
-  const currentWeights = currents.map((current) => Math.abs(current));
-  const region = regionMetrics(original, candidate);
-  const footprint = footprintMetrics(original, candidate, radius);
-  const meanDistance = mean(paired);
-  const weightedDistance = weightedMean(paired, currentWeights);
-  const rmsDistance = rms(paired);
-  const maxDistance = Math.max(...paired);
-  if (options.enforceMax !== false && maxDistance > maxDisplacement) {
+  const score = Core.scoreMontage({
+    capRows,
+    originalLabels,
+    candidateLabels,
+    currents,
+    geometry,
+    importance: weights,
+    footprintRadius: radius,
+  });
+  score.maxDisplacement = maxDisplacement;
+  if (options.enforceMax !== false && score.maxDistance > maxDisplacement) {
     throw new Error(`Replacement exceeds the ${maxDisplacement.toFixed(1)} maximum displacement.`);
   }
-  const pairMetrics = pairwiseDistanceMetrics(original, candidate, currents, geometry);
-  const pairAngle = pairwiseAngleChange(original, candidate, geometry);
-  const polarity = polarityMetrics(original, candidate, currents, geometry);
-  const scale = geometryScale(geometry);
-  const score =
-    weights.weightedDistance * Math.min(weightedDistance / scale, 1) +
-    weights.maxDistance * Math.min(maxDistance / maxDisplacement, 1) +
-    weights.pairwiseDistance * Math.min(pairMetrics.weightedRelative, 1) +
-    weights.pairwiseAngle * Math.min(pairAngle / 90, 1) +
-    weights.polarityCenter * Math.min(polarity.centerMeanShift / scale, 1) +
-    weights.polarityVector * Math.min((polarity.vectorMidpointShift / scale) + (polarity.vectorLengthChange / scale) + (polarity.vectorAngleChange / 90), 1) +
-    weights.regionCoverage * ((100 - region.percentOriginalRegionCovered) / 100) +
-    weights.footprintCoverage * ((100 - footprint.percentOriginalAreaCovered) / 100) +
-    weights.newArea * (footprint.percentCandidateAreaNew / 100);
-
-  return {
-    candidateLabels,
-    candidateMontage: candidateLabels.join(", "),
-    calculationGeometry: geometry === "3d" ? "3D Cartesian" : "2D cap map",
-    finalScore: score,
-    currents,
-    currentBalance: currentBalance(currents),
-    meanDistance,
-    weightedDistance,
-    rmsDistance,
-    maxDistance,
-    maxDisplacement,
-    pairDistance: pairMetrics.meanAbsolute,
-    weightedPairwiseRelative: pairMetrics.weightedRelative,
-    rmsPairwiseRelative: pairMetrics.rmsRelative,
-    maxPairwiseRelative: pairMetrics.maxRelative,
-    pairAngle,
-    positiveCenterShift: polarity.positiveCenterShift,
-    negativeCenterShift: polarity.negativeCenterShift,
-    polarityCenterShift: polarity.centerMeanShift,
-    polarityVectorAngle: polarity.vectorAngleChange,
-    polarityVectorLengthChange: polarity.vectorLengthChange,
-    polarityVectorMidpointShift: polarity.vectorMidpointShift,
-    percentOriginalRegionCovered: region.percentOriginalRegionCovered,
-    percentCandidateRegionNew: region.percentCandidateRegionNew,
-    percentOriginalAreaCovered: footprint.percentOriginalAreaCovered,
-    percentCandidateAreaNew: footprint.percentCandidateAreaNew,
-    originalHull: region.originalHull,
-    candidateHull: region.candidateHull,
-  };
+  return score;
 }
 
-function nearestOpenLabels(targetLabel, poolSize, excludeLabels) {
-  const geometry = calculationGeometry();
-  const target = getScoringPoint(targetLabel, geometry);
-  return capRows
-    .filter((row) => row.status === "open" && !excludeLabels.has(row.label) && (geometry !== "3d" || isValid3dRow(row)))
-    .map((row) => ({ label: row.label, distance: distanceForGeometry(target, geometry === "2d" ? { x: row.mapX, y: row.mapY, z: 0 } : row, geometry) }))
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, poolSize)
-    .map((row) => row.label);
-}
-
-function cartesianProduct(arrays) {
-  return arrays.reduce((acc, values) => acc.flatMap((prefix) => values.map((value) => prefix.concat(value))), [[]]);
-}
-
-function suggestReplacements() {
+function searchPayload() {
   const originalLabels = readInputs("original");
   const currents = readCurrents();
   const topN = Number(document.getElementById("topN").value);
@@ -644,49 +593,63 @@ function suggestReplacements() {
   const requireCoverage = document.getElementById("requireCoverage").checked;
   const weights = importanceWeights();
   validateCurrents(currents);
+  return {
+    capRows,
+    originalLabels,
+    currents,
+    geometry: calculationGeometry(),
+    poolSize,
+    topN,
+    importance: weights,
+    footprintRadius: radius,
+    constraints: {
+      maxDisplacement: Number(document.getElementById("maxDisplacement").value),
+      requireCoverage,
+      minimumCoverage,
+      maxPolarityAngle,
+      maxNewFootprint,
+    },
+  };
+}
 
-  const fixed = [];
-  const blocked = [];
-  const kept = [];
-  originalLabels.forEach((label, index) => {
-    if (getPoint(label).status === "open") {
-      fixed[index] = label;
-      kept.push(label);
-    } else {
-      fixed[index] = null;
-      blocked.push({ label, index });
-    }
-  });
-
-  const keptSet = new Set(kept);
-  const pools = blocked.map((item) => nearestOpenLabels(item.label, poolSize, keptSet));
-  const rows = [];
-
-  for (const replacements of cartesianProduct(pools)) {
-    if (new Set(replacements).size !== replacements.length) continue;
-    const candidate = fixed.slice();
-    replacements.forEach((replacement, index) => {
-      candidate[blocked[index].index] = replacement;
-    });
-    if (new Set(candidate).size !== candidate.length) continue;
-    const score = scoreMontage(originalLabels, candidate, weights, radius, currents, { enforceMax: false });
-    if (score.maxDistance > score.maxDisplacement) continue;
-    if (requireCoverage && score.percentOriginalRegionCovered < minimumCoverage) continue;
-    if (score.polarityVectorAngle > maxPolarityAngle) continue;
-    if (score.percentCandidateAreaNew > maxNewFootprint) continue;
-    score.replacements = blocked.map((item, index) => `${item.label} (${currents[item.index]} mA)->${replacements[index]}`).join("; ") || "none";
-    score.keptOriginals = kept.join(", ") || "none";
-    rows.push(score);
-  }
-
-  suggestions = rows.sort(compareSuggestions).slice(0, topN);
-  selectedCandidate = suggestions[0] || null;
+async function suggestReplacements() {
+  const payload = searchPayload();
+  const result = await runWorkerSearch(payload);
+  canonicalSuggestions = result.suggestions;
+  displayedSuggestions = sortDisplayedSuggestions(canonicalSuggestions);
+  selectedCandidate = canonicalSuggestions[0] || null;
   renderResults();
   renderMap(selectedCandidate);
   renderMetricDetails(selectedCandidate);
-  statusMessage.textContent = suggestions.length
-    ? `${suggestions.length} contenders found.`
-    : "No contenders met the current settings. Try lowering minimum region coverage or increasing pool size.";
+  statusMessage.textContent = canonicalSuggestions.length
+    ? `${canonicalSuggestions.length} contenders found. ${result.counts.scored} scored, ${result.counts.pruned} pruned.`
+    : `No contenders met the current settings. Rejections: ${result.counts.duplicate} duplicate, ${result.counts.maxDisplacement} max movement, ${result.counts.coverage} coverage, ${result.counts.polarityAngle} polarity angle, ${result.counts.footprint} footprint.`;
+}
+
+function runWorkerSearch(payload) {
+  return new Promise((resolve, reject) => {
+    activeWorker = new Worker("./search-worker.js?v=20260713-v9-scoring-core", { type: "module" });
+    activeWorker.onmessage = (event) => {
+      const { type, progress, result, message } = event.data;
+      if (type === "progress") updateSearchProgress(progress);
+      if (type === "complete") {
+        activeWorker.terminate();
+        activeWorker = null;
+        resolve(result);
+      }
+      if (type === "error") {
+        activeWorker.terminate();
+        activeWorker = null;
+        reject(new Error(message));
+      }
+    };
+    activeWorker.onerror = (event) => {
+      activeWorker?.terminate();
+      activeWorker = null;
+      reject(new Error(event.message || "Search worker failed."));
+    };
+    activeWorker.postMessage({ type: "search", payload });
+  });
 }
 
 function scoreManual() {
@@ -695,16 +658,55 @@ function scoreManual() {
   const currents = readCurrents();
   const weights = importanceWeights();
   const radius = Number(document.getElementById("electrodeRadius").value);
-  const score = scoreMontage(originalLabels, manualLabels, weights, radius, currents);
+  const validation = Core.validateManualCandidate({
+    capRows,
+    originalLabels,
+    candidateLabels: manualLabels,
+    currents,
+    geometry: calculationGeometry(),
+    importance: weights,
+    footprintRadius: radius,
+    maxCurrent: Number(document.getElementById("maxCurrent").value),
+    constraints: {
+      maxDisplacement: Number(document.getElementById("maxDisplacement").value),
+      requireCoverage: document.getElementById("requireCoverage").checked,
+      minimumCoverage: Number(document.getElementById("minimumCoverage").value),
+      maxPolarityAngle: Number(document.getElementById("maxPolarityAngle").value),
+      maxNewFootprint: Number(document.getElementById("maxNewFootprint").value),
+    },
+  });
+  if (!validation.canScore) {
+    selectedCandidate = null;
+    renderMetricDetails(null);
+    document.getElementById("manualScore").innerHTML = renderChecklist(validation.checklist, "Manual candidate was not scored.");
+    statusMessage.textContent = "Manual montage failed hard validation.";
+    return;
+  }
+  const score = validation.score;
+  score.maxDisplacement = Number(document.getElementById("maxDisplacement").value);
+  score.eligible = validation.eligible;
+  score.constraintChecklist = validation.checklist;
   score.replacements = originalLabels.map((label, index) => (label === manualLabels[index] ? null : `${label} (${currents[index]} mA)->${manualLabels[index]}`)).filter(Boolean).join("; ") || "none";
+  score.replacementRows = originalLabels.map((label, index) => ({ original: label, candidate: manualLabels[index], current: currents[index] }));
   score.keptOriginals = originalLabels.filter((label, index) => label === manualLabels[index]).join(", ") || "none";
   selectedCandidate = score;
   renderMap(score);
   renderMetricDetails(score);
   document.getElementById("manualScore").innerHTML = `
     <strong>Manual score:</strong> ${score.finalScore.toFixed(3)}<br>
+    ${score.eligible ? "Eligible under current search constraints." : "Not eligible under current search constraints."}<br>
     Weighted movement: ${score.weightedDistance.toFixed(2)}<br>
     Max movement: ${score.maxDistance.toFixed(2)}
+    ${renderChecklist(validation.checklist)}
+  `;
+}
+
+function renderChecklist(checklist, intro = "") {
+  return `
+    <div class="constraint-checklist">
+      ${intro ? `<p>${intro}</p>` : ""}
+      ${checklist.map((item) => `<div><span class="check-badge ${item.pass ? "pass" : "fail"}">${item.pass ? "Pass" : "Fail"}</span>${item.label}</div>`).join("")}
+    </div>
   `;
 }
 
@@ -721,6 +723,7 @@ function setLoading(isLoading) {
   loadingOverlay.setAttribute("aria-hidden", String(!isLoading));
   document.getElementById("runButton").disabled = isLoading;
   document.getElementById("scoreManualButton").disabled = isLoading;
+  if (isLoading) updateSearchProgress({ progress: 0, scored: 0, eligible: 0, pruned: 0 });
 }
 
 function compareSuggestions(a, b) {
@@ -731,17 +734,38 @@ function compareSuggestions(a, b) {
   return (a[sortKey] - b[sortKey]) * direction;
 }
 
+function sortDisplayedSuggestions(rows) {
+  return [...rows].sort(compareSuggestions);
+}
+
 async function runLongCalculation(action) {
   setLoading(true);
   statusMessage.textContent = "Calculating...";
   await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
   try {
-    action();
+    await action();
   } catch (error) {
     statusMessage.textContent = error.message;
   } finally {
     setLoading(false);
   }
+}
+
+function updateSearchProgress(progress) {
+  const bar = document.getElementById("progressBar");
+  const text = document.getElementById("progressText");
+  if (bar) bar.style.width = `${Math.round((progress.progress || 0) * 100)}%`;
+  if (text) {
+    text.textContent = `${Math.round((progress.progress || 0) * 100)}% · ${progress.scored || 0} scored · ${progress.eligible || 0} eligible · ${progress.pruned || 0} pruned`;
+  }
+}
+
+function cancelSearch() {
+  if (!activeWorker) return;
+  activeWorker.terminate();
+  activeWorker = null;
+  setLoading(false);
+  statusMessage.textContent = "Search cancelled.";
 }
 
 function readInputs(prefix) {
@@ -804,6 +828,7 @@ function makeSiteInput(group, value, index) {
   });
   input.addEventListener("input", () => {
     input.value = input.value.trim();
+    if (group === "original") renderManualRows();
     renderMap(selectedCandidate);
     updateSearchSummary();
   });
@@ -832,6 +857,7 @@ function makeOriginalMontageRow(index, siteValue, currentValue) {
     polarity.textContent = currentPolarity(Number(currentInput.value));
     polarity.className = `polarity-pill ${currentPolarity(Number(currentInput.value))}`;
     updateCurrentBalanceStatus();
+    renderManualRows();
     renderMap(selectedCandidate);
   });
   return row;
@@ -842,29 +868,60 @@ function renderOriginalMontageRows() {
   const existingLabels = rows ? readInputs("original") : [];
   const existingCurrents = rows ? readCurrents() : [];
   rows.replaceChildren();
-  for (let index = 0; index < originalSlotCount; index += 1) {
+  for (let index = 0; index < DEFAULT_ORIGINAL.length; index += 1) {
     rows.appendChild(makeOriginalMontageRow(index, existingLabels[index], existingCurrents[index]));
   }
   updateCurrentBalanceStatus();
   renderActiveEntryMode();
 }
 
+function statusBadge(label) {
+  const row = rowByLabel.get(label);
+  if (!label) return `<span class="status-badge muted">empty</span>`;
+  if (!row) return `<span class="status-badge fail">unknown</span>`;
+  return `<span class="status-badge ${row.status === "open" ? "pass" : "fail"}">${row.status}</span>`;
+}
+
+function makeManualRow(index, value) {
+  const originalLabels = readInputs("original");
+  const currents = readCurrents();
+  const original = originalLabels[index] || DEFAULT_ORIGINAL[index];
+  const current = currents[index] ?? DEFAULT_CURRENTS[index];
+  const row = document.createElement("div");
+  row.className = "manual-row";
+  const input = makeSiteInput("manual", value ?? DEFAULT_MANUAL[index] ?? "", index);
+  row.innerHTML = `
+    <div>
+      <strong>Replacement for ${original || `slot ${index + 1}`} (${current >= 0 ? "+" : ""}${Number(current).toFixed(1)} mA)</strong>
+      <span>Original status ${statusBadge(original)}</span>
+    </div>
+    <label>
+      <span>Manual replacement</span>
+    </label>
+    <div class="replacement-status">Replacement ${statusBadge(input.value)}</div>
+  `;
+  row.querySelector("label").appendChild(input);
+  input.addEventListener("input", () => {
+    row.querySelector(".replacement-status").innerHTML = `Replacement ${statusBadge(normalizeLabel(input.value))}`;
+  });
+  return row;
+}
+
+function renderManualRows() {
+  const rows = document.getElementById("manualRows");
+  if (!rows) return;
+  const existing = readInputs("manual");
+  rows.replaceChildren();
+  for (let index = 0; index < DEFAULT_ORIGINAL.length; index += 1) {
+    rows.appendChild(makeManualRow(index, existing[index]));
+  }
+}
+
 function initControls() {
-  const manualInputs = document.getElementById("manualInputs");
   renderOriginalMontageRows();
-  DEFAULT_MANUAL.forEach((label, index) => manualInputs.appendChild(makeSiteInput("manual", label, index)));
+  renderManualRows();
   document.getElementById("selectOriginalButton").addEventListener("click", () => setActiveEntryGroup("original"));
   document.getElementById("selectManualButton").addEventListener("click", () => setActiveEntryGroup("manual"));
-  document.getElementById("addSlotButton").addEventListener("click", () => {
-    originalSlotCount = Math.min(originalSlotCount + 1, 5);
-    renderOriginalMontageRows();
-    renderMap(selectedCandidate);
-  });
-  document.getElementById("removeSlotButton").addEventListener("click", () => {
-    originalSlotCount = Math.max(originalSlotCount - 1, 1);
-    renderOriginalMontageRows();
-    renderMap(selectedCandidate);
-  });
   renderActiveEntryMode();
 
   const importanceControls = document.getElementById("importanceControls");
@@ -906,7 +963,7 @@ function initControls() {
       const nextKey = button.dataset.sort;
       sortDirection = sortKey === nextKey ? sortDirection * -1 : 1;
       sortKey = nextKey;
-      suggestions.sort(compareSuggestions);
+      displayedSuggestions = sortDisplayedSuggestions(canonicalSuggestions);
       renderResults();
     });
   });
@@ -929,15 +986,36 @@ function setImportanceValues(values) {
 function renderCoordinateValidation() {
   const panel = document.getElementById("coordinateValidation");
   if (!panel) return;
-  if (capValidation.ok) {
-    panel.className = "validation-panel ok";
-    panel.innerHTML = "<strong>3D coordinate validation</strong><span>All selectable sites have valid x/y/z coordinates.</span>";
-    return;
-  }
-  panel.className = "validation-panel warning";
+  const metadata = coordinateMetadata || {
+    source_file: COORDINATE_SOURCE,
+    units: "Unverified",
+    origin: "Unverified",
+    axis_orientation: "Unverified",
+    verified: false,
+    notes: "Coordinate metadata is not yet verified. Distances are reported in coordinate units and should not be interpreted as millimeters.",
+  };
+  document.getElementById("coordinateSource").textContent = metadata.source_file || COORDINATE_SOURCE;
+  document.getElementById("coordinateUnits").textContent = metadata.units || "Unverified";
+  const numericClass = capValidation.ok ? "ok" : "warning";
+  panel.className = "validation-panel";
   panel.innerHTML = `
-    <strong>3D coordinate warning</strong>
-    <ul>${capValidation.warnings.map((warning) => `<li>${warning}</li>`).join("")}</ul>
+    <section class="validation-subpanel ${numericClass}">
+      <strong>Numeric coordinate check</strong>
+      ${capValidation.ok
+        ? "<span>Passed: all selectable sites contain finite x/y/z values.</span>"
+        : `<ul>${capValidation.warnings.map((warning) => `<li>${warning}</li>`).join("")}</ul>`}
+    </section>
+    <section class="validation-subpanel ${metadata.verified ? "ok" : "warning"}">
+      <strong>Coordinate metadata</strong>
+      <dl>
+        <div><dt>Source</dt><dd>${metadata.source_file || COORDINATE_SOURCE}</dd></div>
+        <div><dt>Units</dt><dd>${metadata.units || "Unverified"}</dd></div>
+        <div><dt>Origin</dt><dd>${metadata.origin || "Unverified"}</dd></div>
+        <div><dt>Orientation</dt><dd>${metadata.axis_orientation || "Unverified"}</dd></div>
+        <div><dt>Verified</dt><dd>${metadata.verified ? "Yes" : "No"}</dd></div>
+      </dl>
+      <span>${metadata.notes || "Coordinate metadata is not yet verified. Distances are reported in coordinate units and should not be interpreted as millimeters."}</span>
+    </section>
   `;
 }
 
@@ -966,6 +1044,8 @@ function fillFromMap(label) {
   const target = inputs[activeSlotIndex] || inputs[0];
   target.value = label;
   activeSlotIndex = (activeSlotIndex + 1) % inputs.length;
+  if (activeEntryGroup === "original") renderManualRows();
+  if (activeEntryGroup === "manual") renderManualRows();
   renderActiveEntryMode();
   renderMap(selectedCandidate);
 }
@@ -1072,7 +1152,7 @@ function renderHeadGuide(mapper) {
 function renderLegend(mapper) {
   const x = mapper.width - 212;
   const y = 52;
-  svg.appendChild(svgEl("rect", { x, y, width: 188, height: 86, rx: 6, fill: "#fff", stroke: "#d6dce5" }));
+  svg.appendChild(svgEl("rect", { x, y, width: 188, height: 172, rx: 6, fill: "#fff", stroke: "#d6dce5" }));
   svg.appendChild(svgEl("path", { d: holderPath(x + 18, y + 24, 13), fill: "#9bd4a2", stroke: "#3d7f49", "stroke-width": 2 }));
   svg.appendChild(svgEl("path", { d: holderPath(x + 42, y + 24, 13), fill: "#f7e65f", stroke: "#a88c15", "stroke-width": 2 }));
   let text = svgEl("text", { x: x + 44, y: y + 29, class: "legend-label" });
@@ -1083,6 +1163,46 @@ function renderLegend(mapper) {
   text = svgEl("text", { x: x + 66, y: y + 67, class: "legend-label" });
   text.textContent = "open Soterix";
   svg.appendChild(text);
+  svg.appendChild(svgEl("circle", { cx: x + 30, cy: y + 94, r: 10, fill: "#20b15a", stroke: "#166534", "stroke-width": 2 }));
+  text = svgEl("text", { x: x + 66, y: y + 99, class: "legend-label" });
+  text.textContent = "original montage";
+  svg.appendChild(text);
+  svg.appendChild(svgEl("circle", { cx: x + 30, cy: y + 122, r: 10, fill: "#8d4be8", stroke: "#6b21a8", "stroke-width": 2 }));
+  text = svgEl("text", { x: x + 66, y: y + 127, class: "legend-label" });
+  text.textContent = "candidate montage";
+  svg.appendChild(text);
+  svg.appendChild(svgEl("path", { d: `M ${x + 18} ${y + 149} L ${x + 44} ${y + 149}`, stroke: "#475467", "stroke-width": 2, "stroke-dasharray": "4 4", "marker-end": "url(#arrowHead)" }));
+  text = svgEl("text", { x: x + 66, y: y + 154, class: "legend-label" });
+  text.textContent = "replacement path";
+  svg.appendChild(text);
+}
+
+function renderArrowDefs() {
+  const defs = svgEl("defs");
+  const marker = svgEl("marker", { id: "arrowHead", markerWidth: 8, markerHeight: 8, refX: 7, refY: 4, orient: "auto", markerUnits: "strokeWidth" });
+  marker.appendChild(svgEl("path", { d: "M 0 0 L 8 4 L 0 8 z", fill: "#475467" }));
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+}
+
+function renderCorrespondenceArrows(candidate, mapper) {
+  if (!candidate?.replacementRows) return;
+  const group = svgEl("g", { class: "correspondence-arrows" });
+  for (const row of candidate.replacementRows) {
+    if (row.original === row.candidate) continue;
+    const original = rowByLabel.get(row.original);
+    const replacement = rowByLabel.get(row.candidate);
+    if (!original || !replacement) continue;
+    group.appendChild(svgEl("line", {
+      x1: mapper.x(original.mapX),
+      y1: mapper.y(original.mapY),
+      x2: mapper.x(replacement.mapX),
+      y2: mapper.y(replacement.mapY),
+      class: "replacement-arrow",
+      "marker-end": "url(#arrowHead)",
+    }));
+  }
+  svg.appendChild(group);
 }
 
 function renderMetricDetails(candidate) {
@@ -1091,38 +1211,94 @@ function renderMetricDetails(candidate) {
     metricDetails.replaceChildren();
     return;
   }
-  const metrics = [
-    ["Final score", candidate.finalScore.toFixed(3)],
-    ["Calculation geometry", candidate.calculationGeometry],
-    ["Current balance", `${candidate.currentBalance.toFixed(4)} mA`],
-    ["Weighted movement", candidate.weightedDistance.toFixed(3)],
-    ["Mean movement", candidate.meanDistance.toFixed(3)],
-    ["RMS movement", candidate.rmsDistance.toFixed(3)],
-    ["Max movement", `${candidate.maxDistance.toFixed(3)} / ${candidate.maxDisplacement.toFixed(1)}`],
-    ["Weighted pairwise error", `${(candidate.weightedPairwiseRelative * 100).toFixed(1)}%`],
-    ["RMS pairwise error", `${(candidate.rmsPairwiseRelative * 100).toFixed(1)}%`],
-    ["Max pairwise error", `${(candidate.maxPairwiseRelative * 100).toFixed(1)}%`],
-    ["Pairwise angle change", `${candidate.pairAngle.toFixed(1)}°`],
-    ["Positive center shift", candidate.positiveCenterShift.toFixed(3)],
-    ["Negative center shift", candidate.negativeCenterShift.toFixed(3)],
-    ["Polarity center shift", candidate.polarityCenterShift.toFixed(3)],
-    ["Polarity vector angle", `${candidate.polarityVectorAngle.toFixed(1)}°`],
-    ["Polarity vector length", candidate.polarityVectorLengthChange.toFixed(3)],
-    ["Polarity midpoint shift", candidate.polarityVectorMidpointShift.toFixed(3)],
-    ["Original region covered", `${candidate.percentOriginalRegionCovered.toFixed(1)}%`],
-    ["Candidate region new", `${candidate.percentCandidateRegionNew.toFixed(1)}%`],
-    ["Footprint overlap", `${candidate.percentOriginalAreaCovered.toFixed(1)}%`],
-    ["Candidate footprint new", `${candidate.percentCandidateAreaNew.toFixed(1)}%`],
-    ["Kept originals", candidate.keptOriginals || "none"],
-    ["Replacements", candidate.replacements || "none"],
+  const unitLabel = coordinateMetadata?.verified && coordinateMetadata?.units && coordinateMetadata.units !== "Unverified"
+    ? coordinateMetadata.units
+    : "coordinate units";
+  const groups = [
+    ["Summary", [
+      ["Final score", candidate.finalScore.toFixed(3)],
+      ["Calculation geometry", candidate.calculationGeometry],
+      ["Current balance", `${candidate.currentBalance.toFixed(4)} mA`],
+      ["Eligibility status", candidate.eligible === false ? "Not eligible" : "Eligible or auto-selected"],
+      ["Canonical rank", candidate.scoreRank || "Manual"],
+    ]],
+    ["Electrode placement", [
+      ["Weighted movement", `${candidate.weightedDistance.toFixed(3)} ${unitLabel}`],
+      ["Mean movement", `${candidate.meanDistance.toFixed(3)} ${unitLabel}`],
+      ["RMS movement", `${candidate.rmsDistance.toFixed(3)} ${unitLabel}`],
+      ["Max movement", `${candidate.maxDistance.toFixed(3)} / ${candidate.maxDisplacement.toFixed(1)} ${unitLabel}`],
+    ]],
+    ["Montage geometry", [
+      ["Weighted pairwise error", `${(candidate.weightedPairwiseRelative * 100).toFixed(1)}%`],
+      ["RMS pairwise error", `${(candidate.rmsPairwiseRelative * 100).toFixed(1)}%`],
+      ["Max pairwise error", `${(candidate.maxPairwiseRelative * 100).toFixed(1)}%`],
+      ["Pairwise angle change", `${candidate.pairAngle.toFixed(1)}°`],
+    ]],
+    ["Current-flow geometry", [
+      ["Positive-center shift", `${candidate.positiveCenterShift.toFixed(3)} ${unitLabel}`],
+      ["Negative-center shift", `${candidate.negativeCenterShift.toFixed(3)} ${unitLabel}`],
+      ["Mean polarity-center shift", `${candidate.polarityCenterShift.toFixed(3)} ${unitLabel}`],
+      ["Polarity-vector angle change", `${candidate.polarityVectorAngle.toFixed(1)}°`],
+      ["Polarity-vector length change", `${candidate.polarityVectorLengthChange.toFixed(3)} ${unitLabel}`],
+      ["Polarity-vector midpoint shift", `${candidate.polarityVectorMidpointShift.toFixed(3)} ${unitLabel}`],
+    ]],
+    ["Spatial coverage", [
+      ["Original region covered", `${candidate.percentOriginalRegionCovered.toFixed(1)}%`],
+      ["Candidate region new", `${candidate.percentCandidateRegionNew.toFixed(1)}%`],
+      ["Schematic footprint overlap", `${candidate.percentOriginalAreaCovered.toFixed(1)}%`],
+      ["Candidate schematic footprint new", `${candidate.percentCandidateAreaNew.toFixed(1)}%`],
+    ]],
+    ["Replacements", [
+      ["Kept originals", candidate.keptOriginals || "none"],
+      ["Replacement rows", (candidate.replacementRows || []).map((row) => `${row.original} (${row.current} mA) -> ${row.candidate}`).join("<br>") || candidate.replacements || "none"],
+    ]],
   ];
-  metricDetails.replaceChildren(...metrics.map(([label, value]) => {
-    const card = document.createElement("div");
-    card.className = "metric-card";
-    card.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
-    return card;
-  }));
+  const sections = groups.map(([title, metrics]) => {
+    const section = document.createElement("section");
+    section.className = "metric-section";
+    section.innerHTML = `<h3>${title}</h3>`;
+    for (const [label, value] of metrics) {
+      const card = document.createElement("div");
+      card.className = "metric-card";
+      card.innerHTML = `<span>${label}</span><strong>${value}</strong>`;
+      section.appendChild(card);
+    }
+    return section;
+  });
+  sections.push(renderContributionBreakdown(candidate));
+  metricDetails.replaceChildren(...sections);
   metricDetails.classList.add("visible");
+}
+
+function renderContributionBreakdown(candidate) {
+  const section = document.createElement("section");
+  section.className = "metric-section contribution-section";
+  const rows = [...candidate.contributions].sort((a, b) => b.weightedContribution - a.weightedContribution);
+  const sum = rows.reduce((total, row) => total + row.weightedContribution, 0);
+  section.innerHTML = `
+    <h3>Why this candidate received this score</h3>
+    <div class="contribution-wrap">
+      <table>
+        <thead>
+          <tr><th>Metric</th><th>Raw result</th><th>Normalized penalty</th><th>Importance</th><th>Normalized weight</th><th>Score contribution</th></tr>
+        </thead>
+        <tbody>
+          ${rows.map((row) => `
+            <tr>
+              <td>${row.label}</td>
+              <td>${Number(row.rawValue).toFixed(3)}</td>
+              <td>${row.normalizedPenalty.toFixed(3)}</td>
+              <td>${row.rawImportance}</td>
+              <td>${row.normalizedWeight.toFixed(3)}</td>
+              <td>${row.weightedContribution.toFixed(3)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+    <p>Contributions sum to final score: ${sum.toFixed(3)}</p>
+  `;
+  return section;
 }
 
 function renderMap(candidate) {
@@ -1134,6 +1310,7 @@ function renderMap(candidate) {
   svg.replaceChildren();
   svg.setAttribute("viewBox", `0 0 ${mapper.width} ${mapper.height}`);
 
+  renderArrowDefs();
   renderHeadGuide(mapper);
 
   if (candidateLabels.length) {
@@ -1157,6 +1334,7 @@ function renderMap(candidate) {
       }));
     }
   }
+  renderCorrespondenceArrows(candidate, mapper);
 
   for (const row of capRows) {
     const cx = mapper.x(row.mapX);
@@ -1201,6 +1379,18 @@ function renderMap(candidate) {
     });
     text.textContent = row.label;
     g.appendChild(text);
+    const currentRow = candidate?.replacementRows?.find((item) => item.original === row.label || item.candidate === row.label);
+    if (currentRow && (inOriginal || inCandidate)) {
+      const currentText = svgEl("text", {
+        x: cx,
+        y: cy + 27,
+        "text-anchor": "middle",
+        class: "current-map-label",
+        fill: "#172033",
+      });
+      currentText.textContent = `${currentRow.current > 0 ? "+" : ""}${Number(currentRow.current).toFixed(1)} mA`;
+      g.appendChild(currentText);
+    }
     svg.appendChild(g);
   }
 
@@ -1215,11 +1405,11 @@ function renderMap(candidate) {
 
 function renderResults() {
   resultsBody.replaceChildren();
-  suggestions.forEach((row, index) => {
+  displayedSuggestions.forEach((row) => {
     const tr = document.createElement("tr");
     if (row === selectedCandidate) tr.classList.add("selected");
     tr.innerHTML = `
-      <td>${index + 1}</td>
+      <td>${row.scoreRank}</td>
       <td>${row.finalScore.toFixed(3)}</td>
       <td>${row.maxDistance.toFixed(1)}</td>
       <td>${row.weightedDistance.toFixed(1)}</td>
@@ -1245,9 +1435,11 @@ async function main() {
     statusMessage.textContent = "Ready.";
     document.getElementById("runButton").addEventListener("click", () => runLongCalculation(suggestReplacements));
     document.getElementById("scoreManualButton").addEventListener("click", () => runWithStatus(scoreManual));
+    document.getElementById("cancelSearchButton").addEventListener("click", cancelSearch);
     document.querySelectorAll('input[name="calculationGeometry"]').forEach((input) => {
       input.addEventListener("change", () => {
-        suggestions = [];
+        canonicalSuggestions = [];
+        displayedSuggestions = [];
         selectedCandidate = null;
         resultsBody.replaceChildren();
         renderMetricDetails(null);

@@ -1,0 +1,10 @@
+{
+  "source_file": "data/easycap_cac64_soterix_draft.csv",
+  "source_description": "Unverified",
+  "coordinate_template": "Unverified",
+  "units": "Unverified",
+  "origin": "Unverified",
+  "axis_orientation": "Unverified",
+  "verified": false,
+  "notes": "Coordinate metadata is not yet verified. Distances are reported in coordinate units and should not be interpreted as millimeters."
+}
