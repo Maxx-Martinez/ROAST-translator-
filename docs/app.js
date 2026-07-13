@@ -16,15 +16,15 @@ const IMPORTANCE = [
 ];
 
 const DEFAULT_IMPORTANCE = {
-  weightedDistance: 8,
-  maxDistance: 7,
-  pairwiseDistance: 4,
+  weightedDistance: 9,
+  maxDistance: 8,
+  pairwiseDistance: 5,
   pairwiseAngle: 2,
-  polarityCenter: 6,
-  polarityVector: 5,
-  regionCoverage: 2,
-  footprintCoverage: 1,
-  newArea: 1,
+  polarityCenter: 8,
+  polarityVector: 7,
+  regionCoverage: 4,
+  footprintCoverage: 2,
+  newArea: 3,
 };
 
 const GREEN_EEG_LABELS = new Set([
