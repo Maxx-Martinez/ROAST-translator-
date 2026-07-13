@@ -2,17 +2,28 @@ const DEFAULT_ORIGINAL = ["CP4", "P2", "P6", "PO8", "O2"];
 const DEFAULT_MANUAL = ["POO2", "POO10h", "TPP8h", "CCP6h", "PPO2h"];
 const DEFAULT_CURRENTS = [2, -0.5, -0.5, -0.5, -0.5];
 const CURRENT_BALANCE_TOLERANCE = 1e-6;
+const COORDINATE_SOURCE = "data/easycap_cac64_soterix_draft.csv";
+const COORDINATE_UNITS = "Not documented";
+const EQUAL_WEIGHT = 5;
 
 const IMPORTANCE = [
-  ["weightedDistance", "Weighted movement"],
-  ["maxDistance", "Max movement"],
-  ["pairwiseDistance", "Pairwise distance"],
-  ["pairwiseAngle", "Pairwise angle"],
-  ["polarityCenter", "Polarity centers"],
-  ["polarityVector", "Polarity vector"],
-  ["regionCoverage", "Region coverage"],
-  ["footprintCoverage", "Footprint overlap"],
-  ["newArea", "New area"],
+  ["placement", "Electrode placement", [
+    ["weightedDistance", "Weighted movement", "Penalizes movement of high-current electrodes more strongly."],
+    ["maxDistance", "Max movement", "Penalizes the single farthest electrode replacement."],
+  ]],
+  ["geometry", "Montage geometry", [
+    ["pairwiseDistance", "Pairwise distance", "Measures stretching or compression of the montage."],
+    ["pairwiseAngle", "Pairwise orientation", "Measures changes in the 3D direction between matching electrode pairs."],
+  ]],
+  ["current", "Current-flow geometry", [
+    ["polarityCenter", "Polarity centers", "Measures movement of the positive and negative current-weighted centers."],
+    ["polarityVector", "Polarity vector", "Measures changes in the direction and separation between polarity centers."],
+  ]],
+  ["coverage", "Spatial coverage", [
+    ["regionCoverage", "Region coverage", "Measures how much of the original montage region is retained."],
+    ["footprintCoverage", "Footprint overlap", "Measures overlap between circular electrode-contact footprints."],
+    ["newArea", "New area", "Penalizes area covered by the candidate that was not covered originally."],
+  ]],
 ];
 
 const DEFAULT_IMPORTANCE = {
@@ -43,6 +54,10 @@ let selectedCandidate = null;
 let suggestions = [];
 let activeEntryGroup = "original";
 let activeSlotIndex = 0;
+let originalSlotCount = 5;
+let capValidation = { ok: true, warnings: [], invalid3dLabels: new Set() };
+let sortKey = "finalScore";
+let sortDirection = 1;
 
 const svg = document.getElementById("capMap");
 const statusMessage = document.getElementById("statusMessage");
@@ -59,29 +74,127 @@ function parseCsv(text) {
     headers.forEach((header, index) => {
       row[header] = values[index];
     });
+    const x = Number(row.x);
+    const y = Number(row.y);
+    const zRaw = row.z;
+    const z = zRaw === undefined || zRaw === "" ? NaN : Number(zRaw);
+    const mapX = row.map_x === undefined || row.map_x === "" ? x : Number(row.map_x);
+    const mapY = row.map_y === undefined || row.map_y === "" ? y : Number(row.map_y);
     return {
       label: row.label.trim(),
-      x: Number(row.x),
-      y: Number(row.y),
-      z: row.z === undefined || row.z === "" ? 0 : Number(row.z),
-      mapX: row.map_x === undefined || row.map_x === "" ? Number(row.x) : Number(row.map_x),
-      mapY: row.map_y === undefined || row.map_y === "" ? Number(row.y) : Number(row.map_y),
+      x,
+      y,
+      z,
+      mapX,
+      mapY,
       status: row.status.trim().toLowerCase(),
+      raw: row,
     };
   });
 }
 
 async function loadCoordinates() {
-  const response = await fetch("data/easycap_cac64_soterix_draft.csv?v=20260710-v7-current-aware");
+  const response = await fetch(`${COORDINATE_SOURCE}?v=20260713-v8-3d-workflow`);
   if (!response.ok) throw new Error("Could not load coordinate CSV.");
   capRows = parseCsv(await response.text());
   rowByLabel = new Map(capRows.map((row) => [row.label, row]));
+  capValidation = validateCoordinateDataset(capRows);
 }
 
 function getPoint(label) {
   const row = rowByLabel.get(label);
   if (!row) throw new Error(`Unknown label: ${label}`);
-  return { x: row.x, y: row.y, z: row.z, label: row.label, status: row.status };
+  return { x: row.x, y: row.y, z: row.z, mapX: row.mapX, mapY: row.mapY, label: row.label, status: row.status, valid3d: isValid3dRow(row) };
+}
+
+function getScoringPoint(label, geometry) {
+  const row = getPoint(label);
+  if (geometry === "2d") {
+    return { x: row.mapX, y: row.mapY, z: 0, label: row.label, status: row.status, valid3d: row.valid3d };
+  }
+  return row;
+}
+
+function isFiniteNumber(value) {
+  return Number.isFinite(value);
+}
+
+function isValid3dRow(row) {
+  return isFiniteNumber(row.x) && isFiniteNumber(row.y) && isFiniteNumber(row.z);
+}
+
+function formatLabelList(labels) {
+  if (!labels.length) return "";
+  return labels.slice(0, 12).join(", ") + (labels.length > 12 ? `, and ${labels.length - 12} more` : "");
+}
+
+function validateCoordinateDataset(rows) {
+  const warnings = [];
+  const invalid3dLabels = new Set();
+  const seenLabels = new Map();
+  const coordinateTriplets = new Map();
+  const missing3d = [];
+  const invalidMap = [];
+  const selectableMissing = [];
+  const selectableStatuses = new Set(["open", "blocked"]);
+
+  rows.forEach((row) => {
+    if (!row.label) warnings.push("One coordinate row is missing an electrode label.");
+    if (seenLabels.has(row.label)) warnings.push(`Duplicate electrode label: ${row.label}`);
+    seenLabels.set(row.label, true);
+
+    if (!isValid3dRow(row)) {
+      invalid3dLabels.add(row.label);
+      missing3d.push(row.label);
+    }
+    if (!isFiniteNumber(row.mapX) || !isFiniteNumber(row.mapY)) invalidMap.push(row.label);
+    if (selectableStatuses.has(row.status) && !isValid3dRow(row)) selectableMissing.push(row.label);
+    if (isValid3dRow(row)) {
+      const key = [row.x, row.y, row.z].map((value) => value.toFixed(4)).join(",");
+      const duplicate = coordinateTriplets.get(key);
+      if (duplicate) warnings.push(`Duplicate 3D coordinate triplet: ${duplicate} and ${row.label}`);
+      coordinateTriplets.set(key, row.label);
+    }
+  });
+
+  if (missing3d.length) warnings.push(`${missing3d.length} electrode sites are missing valid x, y, or z values: ${formatLabelList(missing3d)}.`);
+  if (invalidMap.length) warnings.push(`${invalidMap.length} electrode sites are missing valid 2D cap-map coordinates: ${formatLabelList(invalidMap)}.`);
+  if (selectableMissing.length) warnings.push(`${selectableMissing.length} open or blocked sites cannot be scored in 3D: ${formatLabelList(selectableMissing)}.`);
+
+  const validRows = rows.filter(isValid3dRow);
+  if (validRows.length && validRows.length !== rows.length) warnings.push("Coordinate dimensionality is inconsistent: some rows have valid x/y/z values and some do not.");
+  if (validRows.length >= 8) {
+    const cx = mean(validRows.map((row) => row.x));
+    const cy = mean(validRows.map((row) => row.y));
+    const cz = mean(validRows.map((row) => row.z));
+    const distances = validRows.map((row) => Math.hypot(row.x - cx, row.y - cy, row.z - cz)).sort((a, b) => a - b);
+    const median = distances[Math.floor(distances.length / 2)];
+    const q1 = distances[Math.floor(distances.length / 4)];
+    const q3 = distances[Math.floor((distances.length * 3) / 4)];
+    const threshold = median + Math.max((q3 - q1) * 4, median * 1.5);
+    const outliers = validRows.filter((row) => Math.hypot(row.x - cx, row.y - cy, row.z - cz) > threshold).map((row) => row.label);
+    if (outliers.length) warnings.push(`Potential 3D coordinate outliers: ${formatLabelList(outliers)}.`);
+  }
+
+  const leftRightPairs = rows
+    .filter((row) => /\d$/.test(row.label) && isValid3dRow(row))
+    .map((left) => {
+      const rightLabel = left.label.replace(/1$/, "2").replace(/3$/, "4").replace(/5$/, "6").replace(/7$/, "8").replace(/9$/, "10");
+      return [left, rowByLabel.get(rightLabel)];
+    })
+    .filter(([left, right]) => right && left.label !== right.label && isValid3dRow(right));
+  const suspiciousPairs = leftRightPairs.filter(([left, right]) => Math.sign(left.x) === Math.sign(right.x)).map(([left, right]) => `${left.label}/${right.label}`);
+  if (suspiciousPairs.length) warnings.push(`Possible left/right coordinate sign issue in paired labels: ${formatLabelList(suspiciousPairs)}.`);
+
+  return { ok: warnings.length === 0, warnings, invalid3dLabels };
+}
+
+function ensureLabelsScorable(labels, geometry) {
+  if (geometry !== "3d") return;
+  const invalid = labels.filter((label) => capValidation.invalid3dLabels.has(label));
+  if (invalid.length) {
+    throw new Error(`These sites cannot be used in 3D calculations: ${invalid.join(", ")}.`);
+  }
 }
 
 function calculationGeometry() {
@@ -420,10 +533,12 @@ function footprintMetrics(original, candidate, radius) {
 function importanceWeights() {
   const values = {};
   let total = 0;
-  for (const [key] of IMPORTANCE) {
-    const value = Number(document.getElementById(`importance-${key}`).value);
-    values[key] = value;
-    total += value;
+  for (const [, , metrics] of IMPORTANCE) {
+    for (const [key] of metrics) {
+      const value = Number(document.getElementById(`importance-${key}`).value);
+      values[key] = value;
+      total += value;
+    }
   }
   if (!total) throw new Error("At least one importance slider must be greater than 0.");
   return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value / total]));
@@ -434,15 +549,16 @@ function scoreMontage(originalLabels, candidateLabels, weights, radius, currents
     throw new Error("Please enter exactly 5 electrode labels.");
   }
   validateCurrents(currents);
+  const geometry = calculationGeometry();
   originalLabels.forEach(getPoint);
   candidateLabels.forEach(getPoint);
-  const geometry = calculationGeometry();
+  ensureLabelsScorable(originalLabels.concat(candidateLabels), geometry);
   const maxDisplacement = Number(document.getElementById("maxDisplacement").value);
   if (!Number.isFinite(maxDisplacement) || maxDisplacement <= 0) {
     throw new Error("Please enter a positive maximum displacement.");
   }
-  const original = originalLabels.map(getPoint);
-  const candidate = candidateLabels.map(getPoint);
+  const original = originalLabels.map((label) => getScoringPoint(label, geometry));
+  const candidate = candidateLabels.map((label) => getScoringPoint(label, geometry));
   const paired = pairedDistances(original, candidate, geometry);
   const currentWeights = currents.map((current) => Math.abs(current));
   const region = regionMetrics(original, candidate);
@@ -472,7 +588,7 @@ function scoreMontage(originalLabels, candidateLabels, weights, radius, currents
   return {
     candidateLabels,
     candidateMontage: candidateLabels.join(", "),
-    calculationGeometry: geometry.toUpperCase(),
+    calculationGeometry: geometry === "3d" ? "3D Cartesian" : "2D cap map",
     finalScore: score,
     currents,
     currentBalance: currentBalance(currents),
@@ -502,11 +618,11 @@ function scoreMontage(originalLabels, candidateLabels, weights, radius, currents
 }
 
 function nearestOpenLabels(targetLabel, poolSize, excludeLabels) {
-  const target = getPoint(targetLabel);
   const geometry = calculationGeometry();
+  const target = getScoringPoint(targetLabel, geometry);
   return capRows
-    .filter((row) => row.status === "open" && !excludeLabels.has(row.label))
-    .map((row) => ({ label: row.label, distance: distanceForGeometry(target, row, geometry) }))
+    .filter((row) => row.status === "open" && !excludeLabels.has(row.label) && (geometry !== "3d" || isValid3dRow(row)))
+    .map((row) => ({ label: row.label, distance: distanceForGeometry(target, geometry === "2d" ? { x: row.mapX, y: row.mapY, z: 0 } : row, geometry) }))
     .sort((a, b) => a.distance - b.distance)
     .slice(0, poolSize)
     .map((row) => row.label);
@@ -523,6 +639,8 @@ function suggestReplacements() {
   const poolSize = Number(document.getElementById("poolSize").value);
   const radius = Number(document.getElementById("electrodeRadius").value);
   const minimumCoverage = Number(document.getElementById("minimumCoverage").value);
+  const maxPolarityAngle = Number(document.getElementById("maxPolarityAngle").value);
+  const maxNewFootprint = Number(document.getElementById("maxNewFootprint").value);
   const requireCoverage = document.getElementById("requireCoverage").checked;
   const weights = importanceWeights();
   validateCurrents(currents);
@@ -554,12 +672,14 @@ function suggestReplacements() {
     const score = scoreMontage(originalLabels, candidate, weights, radius, currents, { enforceMax: false });
     if (score.maxDistance > score.maxDisplacement) continue;
     if (requireCoverage && score.percentOriginalRegionCovered < minimumCoverage) continue;
+    if (score.polarityVectorAngle > maxPolarityAngle) continue;
+    if (score.percentCandidateAreaNew > maxNewFootprint) continue;
     score.replacements = blocked.map((item, index) => `${item.label} (${currents[item.index]} mA)->${replacements[index]}`).join("; ") || "none";
     score.keptOriginals = kept.join(", ") || "none";
     rows.push(score);
   }
 
-  suggestions = rows.sort((a, b) => a.finalScore - b.finalScore).slice(0, topN);
+  suggestions = rows.sort(compareSuggestions).slice(0, topN);
   selectedCandidate = suggestions[0] || null;
   renderResults();
   renderMap(selectedCandidate);
@@ -603,6 +723,14 @@ function setLoading(isLoading) {
   document.getElementById("scoreManualButton").disabled = isLoading;
 }
 
+function compareSuggestions(a, b) {
+  const direction = sortDirection;
+  if (sortKey === "percentOriginalRegionCovered") {
+    return (b[sortKey] - a[sortKey]) * direction;
+  }
+  return (a[sortKey] - b[sortKey]) * direction;
+}
+
 async function runLongCalculation(action) {
   setLoading(true);
   statusMessage.textContent = "Calculating...";
@@ -622,6 +750,34 @@ function readInputs(prefix) {
 
 function readCurrents() {
   return Array.from(document.querySelectorAll("[data-current-index]")).map((input) => Number(input.value));
+}
+
+function currentPolarity(current) {
+  if (current > 0) return "positive";
+  if (current < 0) return "negative";
+  return "zero";
+}
+
+function updateCurrentBalanceStatus() {
+  const status = document.getElementById("currentBalanceStatus");
+  if (!status) return;
+  const currents = readCurrents();
+  const balance = currents.length ? currentBalance(currents) : 0;
+  const isBalanced = Math.abs(balance) <= CURRENT_BALANCE_TOLERANCE;
+  status.textContent = isBalanced
+    ? `Balanced: ${balance.toFixed(3)} mA`
+    : `Invalid montage: total current must equal 0 mA (${balance.toFixed(3)} mA)`;
+  status.classList.toggle("invalid", !isBalanced);
+}
+
+function updateSearchSummary() {
+  const summary = document.getElementById("searchSummary");
+  if (!summary) return;
+  const geometryLabel = calculationGeometry() === "3d" ? "3D Cartesian" : "2D cap map";
+  const maxMove = document.getElementById("maxDisplacement")?.value || "";
+  const coverage = document.getElementById("minimumCoverage")?.value || "";
+  const results = document.getElementById("topN")?.value || "";
+  summary.textContent = `${geometryLabel} · max move ${maxMove} · minimum coverage ${coverage}% · ${results} results`;
 }
 
 function normalizeLabel(value) {
@@ -649,45 +805,140 @@ function makeSiteInput(group, value, index) {
   input.addEventListener("input", () => {
     input.value = input.value.trim();
     renderMap(selectedCandidate);
+    updateSearchSummary();
   });
   return input;
 }
 
-function makeCurrentInput(value, index) {
-  const label = document.createElement("label");
-  label.className = "current-field";
-  label.innerHTML = `
-    <span>Slot ${index + 1} current</span>
-    <input type="number" data-current-index="${index}" min="-10" max="10" step="0.1" value="${value}">
+function makeOriginalMontageRow(index, siteValue, currentValue) {
+  const row = document.createElement("div");
+  row.className = "montage-row";
+  const siteInput = makeSiteInput("original", siteValue ?? DEFAULT_ORIGINAL[index] ?? "", index);
+  const current = currentValue ?? DEFAULT_CURRENTS[index] ?? 0;
+  row.innerHTML = `
+    <label>
+      <span>Electrode site</span>
+    </label>
+    <label>
+      <span>Assigned current (mA)</span>
+      <input type="number" data-current-index="${index}" min="-10" max="10" step="0.1" value="${current}">
+    </label>
+    <div class="polarity-pill ${currentPolarity(current)}">${currentPolarity(current)}</div>
   `;
-  label.querySelector("input").addEventListener("input", () => renderMap(selectedCandidate));
-  return label;
+  row.querySelector("label").appendChild(siteInput);
+  const currentInput = row.querySelector("[data-current-index]");
+  const polarity = row.querySelector(".polarity-pill");
+  currentInput.addEventListener("input", () => {
+    polarity.textContent = currentPolarity(Number(currentInput.value));
+    polarity.className = `polarity-pill ${currentPolarity(Number(currentInput.value))}`;
+    updateCurrentBalanceStatus();
+    renderMap(selectedCandidate);
+  });
+  return row;
+}
+
+function renderOriginalMontageRows() {
+  const rows = document.getElementById("originalMontageRows");
+  const existingLabels = rows ? readInputs("original") : [];
+  const existingCurrents = rows ? readCurrents() : [];
+  rows.replaceChildren();
+  for (let index = 0; index < originalSlotCount; index += 1) {
+    rows.appendChild(makeOriginalMontageRow(index, existingLabels[index], existingCurrents[index]));
+  }
+  updateCurrentBalanceStatus();
+  renderActiveEntryMode();
 }
 
 function initControls() {
-  const originalInputs = document.getElementById("originalInputs");
-  const currentInputs = document.getElementById("currentInputs");
   const manualInputs = document.getElementById("manualInputs");
-  DEFAULT_ORIGINAL.forEach((label, index) => originalInputs.appendChild(makeSiteInput("original", label, index)));
-  DEFAULT_CURRENTS.forEach((current, index) => currentInputs.appendChild(makeCurrentInput(current, index)));
+  renderOriginalMontageRows();
   DEFAULT_MANUAL.forEach((label, index) => manualInputs.appendChild(makeSiteInput("manual", label, index)));
   document.getElementById("selectOriginalButton").addEventListener("click", () => setActiveEntryGroup("original"));
   document.getElementById("selectManualButton").addEventListener("click", () => setActiveEntryGroup("manual"));
+  document.getElementById("addSlotButton").addEventListener("click", () => {
+    originalSlotCount = Math.min(originalSlotCount + 1, 5);
+    renderOriginalMontageRows();
+    renderMap(selectedCandidate);
+  });
+  document.getElementById("removeSlotButton").addEventListener("click", () => {
+    originalSlotCount = Math.max(originalSlotCount - 1, 1);
+    renderOriginalMontageRows();
+    renderMap(selectedCandidate);
+  });
   renderActiveEntryMode();
 
   const importanceControls = document.getElementById("importanceControls");
-  for (const [key, label] of IMPORTANCE) {
-    const row = document.createElement("label");
-    row.className = "slider-row";
-    row.innerHTML = `
-      <span class="slider-topline"><span>${label}</span><strong id="value-${key}">${DEFAULT_IMPORTANCE[key]}</strong></span>
-      <input id="importance-${key}" type="range" min="0" max="10" value="${DEFAULT_IMPORTANCE[key]}">
-    `;
-    importanceControls.appendChild(row);
-    row.querySelector("input").addEventListener("input", (event) => {
-      document.getElementById(`value-${key}`).textContent = event.target.value;
-    });
+  for (const [, groupLabel, metrics] of IMPORTANCE) {
+    const group = document.createElement("section");
+    group.className = "metric-group";
+    group.innerHTML = `<h3>${groupLabel}</h3>`;
+    for (const [key, label, description] of metrics) {
+      const row = document.createElement("label");
+      row.className = "slider-row";
+      row.innerHTML = `
+        <span class="slider-topline"><span>${label}</span><strong id="value-${key}">${DEFAULT_IMPORTANCE[key]}</strong></span>
+        <small>${description}</small>
+        <input id="importance-${key}" type="range" min="0" max="10" value="${DEFAULT_IMPORTANCE[key]}">
+      `;
+      group.appendChild(row);
+      row.querySelector("input").addEventListener("input", (event) => {
+        document.getElementById(`value-${key}`).textContent = event.target.value;
+      });
+    }
+    importanceControls.appendChild(group);
   }
+  document.getElementById("resetWeightsButton").addEventListener("click", () => setImportanceValues(DEFAULT_IMPORTANCE));
+  document.getElementById("equalWeightsButton").addEventListener("click", () => {
+    const values = {};
+    for (const [, , metrics] of IMPORTANCE) {
+      metrics.forEach(([key]) => {
+        values[key] = EQUAL_WEIGHT;
+      });
+    }
+    setImportanceValues(values);
+  });
+  document.querySelectorAll("#poolSize,#topN,#maxDisplacement,#minimumCoverage,#requireCoverage").forEach((input) => {
+    input.addEventListener("input", updateSearchSummary);
+    input.addEventListener("change", updateSearchSummary);
+  });
+  document.querySelectorAll(".sort-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextKey = button.dataset.sort;
+      sortDirection = sortKey === nextKey ? sortDirection * -1 : 1;
+      sortKey = nextKey;
+      suggestions.sort(compareSuggestions);
+      renderResults();
+    });
+  });
+  document.getElementById("coordinateSource").textContent = COORDINATE_SOURCE;
+  document.getElementById("coordinateUnits").textContent = COORDINATE_UNITS;
+  renderCoordinateValidation();
+  updateSearchSummary();
+}
+
+function setImportanceValues(values) {
+  for (const [key, value] of Object.entries(values)) {
+    const input = document.getElementById(`importance-${key}`);
+    const output = document.getElementById(`value-${key}`);
+    if (!input || !output) continue;
+    input.value = value;
+    output.textContent = value;
+  }
+}
+
+function renderCoordinateValidation() {
+  const panel = document.getElementById("coordinateValidation");
+  if (!panel) return;
+  if (capValidation.ok) {
+    panel.className = "validation-panel ok";
+    panel.innerHTML = "<strong>3D coordinate validation</strong><span>All selectable sites have valid x/y/z coordinates.</span>";
+    return;
+  }
+  panel.className = "validation-panel warning";
+  panel.innerHTML = `
+    <strong>3D coordinate warning</strong>
+    <ul>${capValidation.warnings.map((warning) => `<li>${warning}</li>`).join("")}</ul>
+  `;
 }
 
 function setActiveEntryGroup(group) {
@@ -971,8 +1222,10 @@ function renderResults() {
       <td>${index + 1}</td>
       <td>${row.finalScore.toFixed(3)}</td>
       <td>${row.maxDistance.toFixed(1)}</td>
+      <td>${row.weightedDistance.toFixed(1)}</td>
+      <td>${row.percentOriginalRegionCovered.toFixed(1)}%</td>
+      <td>${row.polarityVectorAngle.toFixed(1)}°</td>
       <td>${row.candidateMontage}</td>
-      <td>${row.replacements}</td>
     `;
     tr.addEventListener("click", () => {
       selectedCandidate = row;
@@ -999,7 +1252,9 @@ async function main() {
         resultsBody.replaceChildren();
         renderMetricDetails(null);
         renderMap(null);
-        statusMessage.textContent = `Ready. Using ${calculationGeometry().toUpperCase()} calculations.`;
+        updateSearchSummary();
+        document.getElementById("coordinateModel").textContent = calculationGeometry() === "3d" ? "3D Cartesian" : "2D cap map";
+        statusMessage.textContent = `Ready. Using ${calculationGeometry() === "3d" ? "3D Cartesian" : "2D cap map"} calculations.`;
       });
     });
   } catch (error) {

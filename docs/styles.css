@@ -41,6 +41,12 @@ body {
   padding: 16px 18px;
 }
 
+.toolbar-note {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 h1,
 h2,
 p {
@@ -101,23 +107,77 @@ p {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.current-grid {
-  border-top: 1px solid var(--line);
+.montage-rows {
   display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 10px;
-  padding-top: 10px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
-.current-field {
+.montage-row {
+  align-items: end;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) auto;
+  padding: 8px;
+}
+
+.montage-row label {
   display: grid;
   gap: 4px;
 }
 
+.montage-row span,
 .current-field span {
   color: var(--muted);
   font-size: 11px;
+}
+
+.polarity-pill {
+  border-radius: 999px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 66px;
+  padding: 8px 9px;
+  text-align: center;
+}
+
+.polarity-pill.positive {
+  background: var(--blue);
+}
+
+.polarity-pill.negative {
+  background: var(--purple);
+}
+
+.polarity-pill.zero {
+  background: var(--muted);
+}
+
+.slot-actions,
+.weight-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 10px;
+}
+
+.balance-status,
+.search-summary {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 10px;
+  padding: 9px;
+}
+
+.balance-status.invalid {
+  color: var(--red);
 }
 
 input[type="number"],
@@ -176,7 +236,7 @@ input[type="number"],
   border-radius: 5px;
   color: #4b5565;
   display: block;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   padding: 8px 10px;
   text-align: center;
@@ -238,13 +298,31 @@ input[type="number"],
 
 .slider-list {
   display: grid;
-  gap: 10px;
+  gap: 14px;
   margin-top: 12px;
+}
+
+.metric-group {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+}
+
+.metric-group:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.metric-group h3 {
+  font-size: 12px;
+  letter-spacing: 0;
+  margin: 0;
 }
 
 .slider-row {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .slider-topline {
@@ -280,6 +358,103 @@ input[type="range"] {
   color: var(--ink);
   margin-top: 12px;
   width: 100%;
+}
+
+.secondary-button.compact {
+  font-size: 12px;
+  margin-top: 0;
+  min-height: 34px;
+  padding: 7px 9px;
+}
+
+.method-note {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin-top: 10px;
+  padding: 9px;
+}
+
+.method-note summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.coordinate-summary {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 9px;
+}
+
+.coordinate-summary div {
+  display: grid;
+  gap: 4px;
+}
+
+.coordinate-summary span,
+.constraint-list {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.coordinate-summary strong {
+  font-size: 12px;
+}
+
+.coordinate-summary p {
+  color: var(--red);
+  font-size: 11px;
+}
+
+.constraint-list {
+  line-height: 1.45;
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.validation-panel {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 9px;
+}
+
+.validation-panel strong {
+  font-size: 12px;
+}
+
+.validation-panel span,
+.validation-panel li {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.validation-panel.ok {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.validation-panel.warning {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.sort-button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0;
+  text-align: left;
 }
 
 .primary-button:disabled,

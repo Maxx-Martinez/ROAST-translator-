@@ -5,12 +5,15 @@ stimulation cap layout. It represents an EasyCap / actiCAP-style 64-channel EEG
 cap with Soterix-compatible open stimulation locations, visualizes the layout,
 and ranks stimulation placement options using physical 2D or 3D coordinates.
 
-The interactive cap map is a display schematic. The calculations can use either
-the workbook's physical x/y coordinates or physical x/y/z coordinates. The tool
-keeps any ROAST locations that are already usable, replaces only blocked
-locations, and lets each original site carry a current value that its replacement
-inherits. Replacement sets must keep currents balanced to 0 mA and stay within
-the configured maximum current and maximum displacement limits.
+The interactive cap map is a display schematic. The recommended calculation
+mode is 3D Cartesian: it uses straight-line Euclidean distances between physical
+x/y/z electrode coordinates. This is a geometric screening tool, not a claim to
+reproduce ROAST or true scalp-surface geodesic distance. The 2D cap-map mode is
+kept mainly for visualization, debugging, and comparison with the schematic map.
+The tool keeps any ROAST locations that are already usable, replaces only
+blocked locations, and lets each original site carry a current value that its
+replacement inherits. Replacement sets must keep currents balanced to 0 mA and
+stay within the configured maximum current and maximum displacement limits.
 
 It ranks replacements by how well they preserve:
 
@@ -60,10 +63,12 @@ FCC4h,51.8851,7.7978,73.5070,1.3,1.0,open
 - `blocked` - occupied by EEG or otherwise unavailable
 
 The physical `x`, `y`, and optional `z` coordinates should be internally
-consistent. In the website, 2D mode uses physical `x/y` for all scoring and 3D
-mode uses physical `x/y/z` for all scoring. Optional `map_x` and `map_y` columns
-are display-only coordinates used to make the interactive cap map mirror the
-EasyCap PDF layout more closely.
+consistent. In the website, 3D Cartesian mode uses physical `x/y/z` for scoring.
+The 2D cap-map mode uses `map_x` and `map_y` for schematic comparison. Optional
+`map_x` and `map_y` columns are also used to make the interactive cap map mirror
+the EasyCap PDF layout more closely. Coordinate units are not currently
+documented in the CSV, so verify the template, units, origin, and orientation
+before interpreting distances scientifically.
 
 ## Usage
 

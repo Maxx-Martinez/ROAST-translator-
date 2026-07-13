@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ROAST Translator</title>
-    <link rel="stylesheet" href="styles.css?v=20260710-v7-current-aware" />
+    <link rel="stylesheet" href="styles.css?v=20260713-v8-3d-workflow" />
   </head>
   <body>
     <main class="app-shell">
@@ -13,51 +13,67 @@
           <h1>ROAST Translator</h1>
           <p>Geometry-based replacement suggestions for blocked EasyCap/Soterix montage sites.</p>
         </div>
-        <button id="runButton" class="primary-button" type="button">Find replacements</button>
+        <span class="toolbar-note">Geometric screening before ROAST validation</span>
       </section>
 
       <section class="workspace">
         <aside class="controls">
           <section class="panel">
-            <h2>Original Montage</h2>
+            <h2>1. Original montage</h2>
             <div class="entry-tools">
               <button id="selectOriginalButton" class="mode-button active" type="button">Click map for original</button>
             </div>
-            <div id="originalInputs" class="select-grid"></div>
-            <div id="currentInputs" class="current-grid"></div>
+            <div id="originalMontageRows" class="montage-rows"></div>
+            <div class="slot-actions">
+              <button id="addSlotButton" class="secondary-button compact" type="button">Add slot</button>
+              <button id="removeSlotButton" class="secondary-button compact" type="button">Remove slot</button>
+            </div>
+            <div id="currentBalanceStatus" class="balance-status">Balanced: 0.000 mA</div>
           </section>
 
           <section class="panel">
-            <h2>Settings</h2>
-            <label class="field">
-              <span>Nearby pool size</span>
-              <input id="poolSize" type="number" min="3" max="16" value="10" />
-            </label>
-            <label class="field">
-              <span>Results</span>
-              <input id="topN" type="number" min="1" max="50" value="10" />
-            </label>
+            <h2>2. Calculation model</h2>
             <fieldset class="field">
-              <legend>Calculation geometry</legend>
+              <legend>Geometry</legend>
               <div class="segmented-control">
                 <label>
-                  <input type="radio" name="calculationGeometry" value="2d" checked />
-                  <span>2D</span>
+                  <input type="radio" name="calculationGeometry" value="3d" checked />
+                  <span>3D Cartesian</span>
                 </label>
                 <label>
-                  <input type="radio" name="calculationGeometry" value="3d" />
-                  <span>3D</span>
+                  <input type="radio" name="calculationGeometry" value="2d" />
+                  <span>2D cap map</span>
                 </label>
               </div>
+              <small id="geometrySummary">3D Cartesian is recommended. It uses straight-line Euclidean distances between 3D scalp coordinates, not distance measured along the curved scalp surface.</small>
             </fieldset>
+            <details class="method-note">
+              <summary>Methodology note</summary>
+              <p>3D Cartesian uses x, y, z coordinates. Movement and pairwise distance are straight chord distances through space. This version does not yet calculate true geodesic distance along a scalp mesh. 2D is primarily useful for visualization, debugging, and comparison with the cap map.</p>
+            </details>
+            <div class="coordinate-summary">
+              <div><span>Coordinate source</span><strong id="coordinateSource">data/easycap_cac64_soterix_draft.csv</strong></div>
+              <div><span>Units</span><strong id="coordinateUnits">Not documented</strong></div>
+              <div><span>Coordinate model</span><strong id="coordinateModel">3D Cartesian</strong></div>
+              <p>Warning: verify all electrode coordinates use the same template, units, origin, and orientation.</p>
+            </div>
             <label class="field">
               <span>Electrode radius</span>
               <input id="electrodeRadius" type="number" min="1" max="30" step="0.5" value="10" />
               <small>Only affects circular footprint overlap; region coverage uses the 5-point montage shape.</small>
             </label>
+            <div id="coordinateValidation" class="validation-panel"></div>
+          </section>
+
+          <section class="panel">
+            <h2>3. Search constraints</h2>
             <label class="field">
-              <span>Minimum region coverage</span>
-              <input id="minimumCoverage" type="number" min="0" max="100" value="85" />
+              <span>Nearby pool size</span>
+              <input id="poolSize" type="number" min="3" max="16" value="10" />
+            </label>
+            <label class="field">
+              <span>Number of results</span>
+              <input id="topN" type="number" min="1" max="50" value="10" />
             </label>
             <label class="field">
               <span>Maximum current per electrode (mA)</span>
@@ -71,11 +87,41 @@
               <input id="requireCoverage" type="checkbox" checked />
               <span>Require minimum region coverage</span>
             </label>
+            <label class="field">
+              <span>Minimum region coverage</span>
+              <input id="minimumCoverage" type="number" min="0" max="100" value="85" />
+            </label>
+            <ul class="constraint-list">
+              <li>Unique replacement site requirement: on</li>
+              <li>Current balance requirement: total must equal 0 mA</li>
+              <li>Existing exclusion rule: blocked EEG sites are not replacement candidates</li>
+            </ul>
+            <details class="method-note">
+              <summary>Advanced constraints</summary>
+              <label class="field">
+                <span>Maximum polarity-vector angle change</span>
+                <input id="maxPolarityAngle" type="number" min="0" max="180" step="1" value="180" />
+              </label>
+              <label class="field">
+                <span>Maximum new footprint percentage</span>
+                <input id="maxNewFootprint" type="number" min="0" max="100" step="1" value="100" />
+              </label>
+            </details>
           </section>
 
           <section class="panel">
-            <h2>Importance</h2>
+            <h2>4. Scoring priorities</h2>
+            <div class="weight-actions">
+              <button id="resetWeightsButton" class="secondary-button compact" type="button">Reset to recommended weights</button>
+              <button id="equalWeightsButton" class="secondary-button compact" type="button">Equal weights</button>
+            </div>
             <div id="importanceControls" class="slider-list"></div>
+          </section>
+
+          <section class="panel">
+            <h2>5. Search action</h2>
+            <p id="searchSummary" class="search-summary">3D Cartesian · max move 75 · minimum coverage 85% · 10 results</p>
+            <button id="runButton" class="primary-button" type="button">Find replacement montages</button>
           </section>
 
           <section class="panel">
@@ -100,7 +146,7 @@
 
           <section class="results-panel">
             <div class="stage-heading">
-              <h2>Top Contenders</h2>
+              <h2>6. Results overview</h2>
               <p>Lower final score is better. Click a row to inspect it.</p>
             </div>
             <div id="statusMessage" class="status-message">Loading cap coordinates...</div>
@@ -110,10 +156,12 @@
                 <thead>
                   <tr>
                     <th>Rank</th>
-                    <th>Score</th>
-                    <th>Max move</th>
-                    <th>Candidate</th>
-                    <th>Replacements</th>
+                    <th><button type="button" class="sort-button" data-sort="finalScore">Final score</button></th>
+                    <th><button type="button" class="sort-button" data-sort="maxDistance">Max movement</button></th>
+                    <th><button type="button" class="sort-button" data-sort="weightedDistance">Weighted movement</button></th>
+                    <th><button type="button" class="sort-button" data-sort="percentOriginalRegionCovered">Region retained</button></th>
+                    <th><button type="button" class="sort-button" data-sort="polarityVectorAngle">Polarity-vector angle</button></th>
+                    <th>Candidate montage</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -133,6 +181,6 @@
       </div>
     </div>
 
-    <script src="app.js?v=20260710-v7-current-aware"></script>
+    <script src="app.js?v=20260713-v8-3d-workflow"></script>
   </body>
 </html>
